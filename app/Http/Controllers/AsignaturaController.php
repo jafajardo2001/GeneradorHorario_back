@@ -54,28 +54,30 @@ class AsignaturaController extends Controller
         $asignatura = AsignaturaModel::find($id);
 
         if (!$asignatura) {
-            Log::info("Asignatura no encontrada con id: $id");
             return response()->json([
                 "ok" => false,
                 "message" => "La asignatura no existe con el id $id"
             ], 400);
         }
 
-        Log::info("Asignatura encontrada: ", $asignatura->toArray());
-
-        $asignatura->update([
-            "estado" => "E",
+        $result = $asignatura->update([
+            "estado" => "I",
             "id_usuario_creador" => auth()->id() ?? 1,
             "ip_actualizacion" => $request->ip(),
-            "fecha_actualizacion" => now(),
+            "fecha_actualizacion" => now(),  // Estado cambiado a "E" para marcarlo como desactivado
         ]);
 
-        Log::info("Asignatura actualizada correctamente.");
-
-        return response()->json([
-            "ok" => true,
-            "message" => "Asignatura eliminada con éxito"
-        ], 200);
+        if ($result) {
+            return response()->json([
+                "ok" => true,
+                "message" => "Asignatura desactivada con éxito"
+            ], 200);
+        } else {
+            return response()->json([
+                "ok" => false,
+                "message" => "No se pudo desactivar la asignatura"
+            ], 400);
+        }
 
     } catch (Exception $e) {
         Log::error(__FILE__ . " > " . __FUNCTION__);

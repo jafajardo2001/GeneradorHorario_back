@@ -14,5 +14,6 @@ class AsignaturaModel extends Model
     const CREATED_AT = 'fecha_creacion';
     const UPDATED_AT = 'fecha_actualizacion';
 
-    protected $fillable = ['descripcion'];    
+    // Asegúrate de que 'estado' esté en el array $fillable para permitir la actualización
+    protected $fillable = ['descripcion', 'estado', 'id_usuario_creador', 'ip_actualizacion', 'fecha_actualizacion'];
 }
