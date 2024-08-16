@@ -42,7 +42,7 @@ Route::prefix('istg')->group(
         Route::get("show_data_asignatura/", [AsignaturaController::class, 'showAsignatura']);
         Route::put("update_asignatura/{id}", [AsignaturaController::class, 'updateAsignatura']);
         Route::post("create_asignatura/", [AsignaturaController::class, 'storeAsignatura']);
-        Route::delete("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
+        Route::post("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
         //CARRERA
         Route::get("show_carrera/", [CarreraController::class, 'showCarrera']);
         Route::put("update_carrera/{id}", [CarreraController::class, 'updateCarrera']);

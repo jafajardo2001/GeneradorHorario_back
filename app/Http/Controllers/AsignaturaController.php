@@ -48,40 +48,47 @@ class AsignaturaController extends Controller
         }
     }
 
-    public function deleteAsignatura(Request $request,$id)
-    {
-        try{
-            $asignatura = AsignaturaModel::find($id);
-            if(!$asignatura){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "La asignatura no existe con el id $id"
-                ], 400);
-            }
+    public function deleteAsignatura(Request $request, $id)
+{
+    try {
+        $asignatura = AsignaturaModel::find($id);
 
-            AsignaturaModel::find($id)->updated([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
-            ]);
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Asignatura creada con exito"
-            ], 200);
-
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
-
+        if (!$asignatura) {
+            Log::info("Asignatura no encontrada con id: $id");
+            return response()->json([
+                "ok" => false,
+                "message" => "La asignatura no existe con el id $id"
+            ], 400);
         }
+
+        Log::info("Asignatura encontrada: ", $asignatura->toArray());
+
+        $asignatura->update([
+            "estado" => "E",
+            "id_usuario_creador" => auth()->id() ?? 1,
+            "ip_actualizacion" => $request->ip(),
+            "fecha_actualizacion" => now(),
+        ]);
+
+        Log::info("Asignatura actualizada correctamente.");
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Asignatura eliminada con éxito"
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
     public function updateAsignatura(Request $request,$id)
     {
@@ -119,7 +126,7 @@ class AsignaturaController extends Controller
     public function showAsignatura()
     {
         try{
-            $asignatura = AsignaturaModel::select("id_materia","descripcion")->whereIn("estado",["A","I"])->get();
+            $asignatura = AsignaturaModel::select("id_materia","descripcion","fecha_creacion","estado","fecha_actualizacion")->whereIn("estado",["A","I"])->get();
             return Response()->json([
                 "ok" => true,
                 "data" => $asignatura
