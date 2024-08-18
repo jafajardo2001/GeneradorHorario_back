@@ -13,7 +13,7 @@ class UsuarioModel extends Model
 
     protected $table = 'usuarios';
     protected $primaryKey = 'id_usuario';
-    
+
     const CREATED_AT = 'fecha_creacion';
     const UPDATED_AT = 'fecha_actualizacion';
 
@@ -21,7 +21,9 @@ class UsuarioModel extends Model
         'cedula',
         'nombres',
         'apellidos',
-        'id_rol'
+        'id_rol',
+        'id_titulo_academico'
+
     ];
-    
+
 }

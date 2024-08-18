@@ -13,16 +13,31 @@ class AsignaturaController extends Controller
 {
     public function storeAsignatura(Request $request)
     {
-        try{
+        try {
+            // Verificar que el campo "descripcion" esté presente en la solicitud
             if (!isset($request->descripcion)) {
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El campo de descripcion es obligatorio"
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El campo de descripción es obligatorio"
                 ], 400);
             }
 
+            // Verificar si ya existe una asignatura con la misma descripción
+            $asignaturaExistente = AsignaturaModel::where('descripcion', ucfirst(trim($request->descripcion)))
+                ->where('estado', 'A')
+                ->first();
+
+            if ($asignaturaExistente) {
+                return Response()->json([
+                    "ok" => false,
+                    "message" => "La asignatura ya está registrada",
+                    "msg_error" => "La asignatura ya está registrada"
+                ], 400);
+            }
+
+            // Crear la nueva asignatura
             $modelo = new AsignaturaModel();
-            $modelo->descripcion = $request->descripcion;
+            $modelo->descripcion = ucfirst(trim($request->descripcion));
             $modelo->ip_creacion = $request->ip();
             $modelo->ip_actualizacion = $request->ip();
             $modelo->id_usuario_creador = auth()->id() ?? 1;
@@ -30,23 +45,24 @@ class AsignaturaController extends Controller
             $modelo->estado = "A";
             $modelo->save();
 
-            return Response()->json([
+            return response()->json([
                 "ok" => true,
-                "message" => "Asignatura creada con exito"
-            ], 200);
+                "message" => "Asignatura creada con éxito"
+            ], 201);
 
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
+        } catch (Exception $e) {
+            log::error(__FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Linea : " . $e->getLine());
 
-            return Response()->json([
-                "ok" => true,
+            return response()->json([
+                "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
-
         }
     }
+
+
 
     public function deleteAsignatura(Request $request,$id)
     {
