@@ -90,6 +90,47 @@ class AsignaturaController extends Controller
         ], 500);
     }
 }
+public function updateEstadoAsignatura(Request $request, $id)
+{
+    try {
+        // Buscar la asignatura por su ID
+        $asignatura = AsignaturaModel::find($id);
+
+        if (!$asignatura) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La asignatura no existe con el id $id"
+            ], 400);
+        }
+
+        // Alternar el estado de la asignatura
+        $nuevoEstado = $asignatura->estado === 'A' ? 'I' : 'A';
+        $asignatura->update([
+            "estado" => $nuevoEstado,
+            "fecha_actualizacion" => now(),
+            "ip_actualizacion" => $request->ip(),
+            "id_usuario_creador" => auth()->id() ?? 1,
+        ]);
+
+        $accion = $nuevoEstado === 'A' ? 'activada' : 'inactivada';
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Asignatura $accion con éxito"
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
 
 
     public function updateAsignatura(Request $request,$id)
