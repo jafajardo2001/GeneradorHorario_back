@@ -18,77 +18,102 @@ class RolController extends Controller
         $this->servicio_informe = new MensajeAlertasServicio();
     }
     public function storeRol(Request $request)
-    {
-        $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
-        try {
+{
+    $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
+    try {
+        // Verificar si el rol ya existe
+        $rolExistente = RolModel::where('descripcion', ucfirst(trim($request->descripcion)))
+            ->where('estado', 'A')
+            ->first();
 
-            $modelo = new RolModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
-
-            if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-                ], 400);
-            }
-
-            $modelo->descripcion = ucfirst(trim($request->descripcion));
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->estado = "A";
-            $modelo->save();
-            return Response()->json([
-                "ok" => true,
-                "message" => "Rol creado con exito"
-            ], 200);
-        } catch (Exception $e) {
-            log::error(__FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
-        }
-    }
-
-    public function deleteRol(Request $request, $id)
-    {
-        
-        try {
-            $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
-            $asignatura = RolModel::find($id);
-            if(!$asignatura){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El Rol no existe con el id $id"
-                ], 400);    
-            }
-            
-            RolModel::find($id)->updated([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
-            ]);
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Rol eliminado con exito"
-            ],200);
-        } catch (Exception $e) {
-            log::error(__FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-            return Response()->json([
+        if ($rolExistente) {
+            return response()->json([
                 "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
+                "message" => "El rol ya existe.",
+            ], 400);
         }
+
+        // Si no existe, procedemos a crear el nuevo rol
+        $modelo = new RolModel();
+        $campos_requeridos = $modelo->getFillable();
+        $campos_recibidos = array_keys($request->all());
+        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+
+        if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
+            ], 400);
+        }
+
+        $modelo->descripcion = ucfirst(trim($request->descripcion));
+        $modelo->ip_creacion = $request->ip();
+        $modelo->ip_actualizacion = $request->ip();
+        $modelo->id_usuario_creador = auth()->id() ?? 1;
+        $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+        $modelo->estado = "A";
+        $modelo->save();
+
+        return Response()->json([
+            "ok" => true,
+            "message" => "Rol creado con éxito"
+        ], 200);
+
+    } catch (Exception $e) {
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Linea : " . $e->getLine());
+        return Response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
+
+public function deleteRol(Request $request, $id)
+{
+    try {
+        $rol = RolModel::find($id);
+
+        if (!$rol) {
+            return response()->json([
+                "ok" => false,
+                "message" => "El perfil no existe con el id $id"
+            ], 400);
+        }
+
+        $result = $rol->update([
+            "estado" => "E",  // Estado cambiado a "E" para marcarlo como eliminado
+            "id_usuario_creador" => auth()->id() ?? 1,
+            "ip_actualizacion" => $request->ip(),
+            "fecha_actualizacion" => now(),
+        ]);
+
+        if ($result) {
+            return response()->json([
+                "ok" => true,
+                "message" => "Perfil eliminado con éxito"
+            ], 200);
+        } else {
+            return response()->json([
+                "ok" => false,
+                "message" => "No se pudo desactivar el perfil"
+            ], 400);
+        }
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
     
     public function getRoles(Request $request)
     {
@@ -112,4 +137,55 @@ class RolController extends Controller
             ], 200);
         }
     }
+    public function updateRol(Request $request, $id)
+{
+    $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+    try {
+        // Buscar el rol por su ID
+        $rol = RolModel::find($id);
+        
+        // Verificar si el rol existe
+        if (!$rol) {
+            return response()->json([
+                "ok" => false,
+                "message" => "El rol no existe.",
+            ], 404);
+        }
+
+        // Verificar si la nueva descripción ya existe en otro rol
+        $rolExistente = RolModel::where('descripcion', ucfirst(trim($request->descripcion)))
+            ->where('estado', 'A')
+            ->where('id_rol', '!=', $id) // Excluir el rol actual de la búsqueda
+            ->first();
+
+        if ($rolExistente) {
+            return response()->json([
+                "ok" => false,
+                "message" => "El rol con la descripción proporcionada ya existe.",
+            ], 400);
+        }
+
+        // Actualizar los datos del rol
+        $rol->descripcion = ucfirst(trim($request->descripcion));
+        $rol->ip_actualizacion = $request->ip();
+        $rol->id_usuario_actualizo = auth()->id() ?? 1;
+        $rol->estado = "A";
+        $rol->save();
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Rol actualizado con éxito",
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Linea : " . $e->getLine());
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor",
+        ], 500);
+    }
+}
+
 }

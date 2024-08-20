@@ -68,7 +68,9 @@ Route::prefix('istg')->group(
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);
         Route::post("create_rol/", [RolController::class, 'storeRol']);
-        Route::delete("delete_rol/", [RolController::class, 'deleteRol']);
+        Route::put("delete_rol/{id}", [RolController::class, 'deleteRol']);
+        Route::put("update_rol/{id}", [RolController::class, 'updateRol']);
+
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
