@@ -21,7 +21,11 @@ class UsuarioModel extends Model
         'cedula',
         'nombres',
         'apellidos',
+        'estado',
         'id_rol'
     ];
-    
+    public function creador()
+    {
+        return $this->belongsTo(UsuarioModel::class, 'id_usuario_creador');
+    }
 }

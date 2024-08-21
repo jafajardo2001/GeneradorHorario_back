@@ -62,8 +62,9 @@ Route::prefix('istg')->group(
         Route::delete("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
-        // Route::post("edit_usuario/", [UsuarioController::class, 'editUser']);
-        Route::delete("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        Route::get("usuario/{id}", [UsuarioController::class, 'show']);
+        Route::put("update_usuario/{id}", [UsuarioController::class, 'updateUsuario']);
+        Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);

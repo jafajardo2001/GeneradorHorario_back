@@ -119,30 +119,43 @@ class UsuarioController extends Controller
     }
 
     public function showUsuarios()
-    {
-        try{
-            $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);$this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
-            $usuarios = UsuarioModel::select("id_usuario","cedula","nombres"
-            ,"apellidos","usuario",
-            "imagen_perfil","rol.id_rol",
-            "rol.descripcion")
-            ->join("rol","usuarios.id_rol","=","rol.id_rol")
-            ->get();
-            return Response()->json([
-                "ok" => true,
-                "data" => $usuarios
-            ], 200);
-        }catch (Exception $e) {
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
+{
+    try {
+        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
 
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
-        }   
+        $usuarios = UsuarioModel::select(
+            "usuarios.id_usuario",
+            "usuarios.cedula",
+            "usuarios.nombres",
+            "usuarios.apellidos",
+            "usuarios.usuario",
+            "usuarios.imagen_perfil",
+            "rol.id_rol",
+            "rol.descripcion",
+            "usuarios.estado",
+            UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")  // Nombre completo del creador
+        )
+        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
+        ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
+        ->where("usuarios.estado", "A")  // Filtra por estado "A"
+        ->get();
+
+        return Response()->json([
+            "ok" => true,
+            "data" => $usuarios
+        ], 200);
+    } catch (Exception $e) {
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Linea : " . $e->getLine());
+
+        return Response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
     public function deleteUsuario(Request $request,$id)
     {
@@ -155,7 +168,7 @@ class UsuarioController extends Controller
                     "message" => "El usuario con id  $request->id_rol no existe"
                 ], 400);
             }
-            $usuario->updated([
+            $usuario->update([
                 "estado" => "E",
                 "id_usuario_actualizo" => auth()->id(),
                 "ip_actualizo" => $request->ip(),
@@ -176,4 +189,93 @@ class UsuarioController extends Controller
             ], 500);
         }   
     }
+    public function updateUsuario(Request $request, $id)
+{
+    // Validar los datos recibidos
+    $validatedData = $request->validate([
+        'cedula' => 'required|string|max:255',
+        'nombres' => 'required|string|max:255',
+        'apellidos' => 'required|string|max:255',
+        'perfil' => 'required|integer|exists:rol,id_rol',  // Asegúrate de que 'rol' es la tabla de roles y 'id_rol' es el campo ID
+    ]);
+
+    try {
+        // Encontrar el usuario por ID
+        $usuario = UsuarioModel::findOrFail($id);
+
+        // Verificar si la nueva cédula ya existe en otro usuario
+        $usuarioExistente = UsuarioModel::where('cedula', $validatedData['cedula'])
+            ->where('id_usuario', '!=', $id) // Excluir el usuario actual de la búsqueda
+            ->first();
+
+        if ($usuarioExistente) {
+            return response()->json([
+                'ok' => false,
+                'message' => 'La cédula ya está en uso por otro usuario.'
+            ], 400);
+        }
+
+        // Actualizar los campos del usuario
+        $usuario->cedula = $validatedData['cedula'];
+        $usuario->nombres = $validatedData['nombres'];
+        $usuario->apellidos = $validatedData['apellidos'];
+        $usuario->id_rol = $validatedData['perfil'];
+        
+        // Guardar los cambios
+        $usuario->save();
+
+        return response()->json([
+            'ok' => true,
+            'message' => 'Usuario actualizado con éxito'
+        ], 200);
+    } catch (\Exception $e) {
+        // Manejo de errores
+        Log::error('Error al actualizar usuario: ' . $e->getMessage());
+        return response()->json([
+            'ok' => false,
+            'message' => 'Error interno en el servidor'
+        ], 500);
+    }
+}
+
+
+public function show($id)
+{
+    try {
+        $usuario = UsuarioModel::select(
+            "id_usuario",
+            "cedula",
+            "nombres",
+            "apellidos",
+            "usuario",
+            "imagen_perfil",
+            "rol.id_rol",
+            "rol.descripcion",
+            "usuarios.estado",
+            UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")
+        )
+        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
+        ->join("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
+        ->where("usuarios.id_usuario", $id)
+        ->first();
+
+        if (!$usuario) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Usuario no encontrado"
+            ], 404);
+        }
+
+        return response()->json([
+            "ok" => true,
+            "data" => $usuario
+        ], 200);
+    } catch (Exception $e) {
+        Log::error("Error en show: " . $e->getMessage());
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
 }
