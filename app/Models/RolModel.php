@@ -12,6 +12,7 @@ class RolModel extends Model
     protected $primaryKey = 'id_rol';
     const CREATED_AT = 'fecha_creacion';
     const UPDATED_AT = 'fecha_actualizacion';
-    protected $fillable = ['descripcion', 'estado', 'id_usuario_creador', 'ip_actualizacion', 'fecha_actualizacion'];
-
+    protected $fillable = [
+        'descripcion'
+    ];
 } 

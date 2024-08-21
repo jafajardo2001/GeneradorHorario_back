@@ -12,155 +12,130 @@ use Illuminate\Http\Request;
 class AsignaturaController extends Controller
 {
     public function storeAsignatura(Request $request)
-{
-    try {
-        // Validar que el campo 'descripcion' esté presente
-        if (!isset($request->descripcion)) {
-            return response()->json([
-                "ok" => false,
-                "msg_error" => "El campo de descripción es obligatorio"
-            ], 400);
-        }
+    {
+        try {
+            // Verificar que el campo "descripcion" esté presente en la solicitud
+            if (!isset($request->descripcion)) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El campo de descripción es obligatorio"
+                ], 400);
+            }
 
-        // Verificar si ya existe una asignatura con la misma descripción
-        $asignaturaExistente = AsignaturaModel::where('descripcion', $request->descripcion)->first();
+            // Verificar si ya existe una asignatura con la misma descripción
+            $asignaturaExistente = AsignaturaModel::where('descripcion', ucfirst(trim($request->descripcion)))
+                ->where('estado', 'A')
+                ->first();
 
-        if ($asignaturaExistente) {
-            return response()->json([
-                "ok" => false,
-                "msg_error" => "La materia ya existe con la descripción " . $request->descripcion
-            ], 400);
-        }
+            if ($asignaturaExistente) {
+                return Response()->json([
+                    "ok" => false,
+                    "message" => "La asignatura ya está registrada",
+                    "msg_error" => "La asignatura ya está registrada"
+                ], 400);
+            }
 
-        // Crear una nueva asignatura si no existe
-        $modelo = new AsignaturaModel();
-        $modelo->descripcion = $request->descripcion;
-        $modelo->ip_creacion = $request->ip();
-        $modelo->ip_actualizacion = $request->ip();
-        $modelo->id_usuario_creador = auth()->id() ?? 1;
-        $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-        $modelo->estado = "A";
-        $modelo->save();
+            // Crear la nueva asignatura
+            $modelo = new AsignaturaModel();
+            $modelo->descripcion = ucfirst(trim($request->descripcion));
+            $modelo->ip_creacion = $request->ip();
+            $modelo->ip_actualizacion = $request->ip();
+            $modelo->id_usuario_creador = auth()->id() ?? 1;
+            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+            $modelo->estado = "A";
+            $modelo->save();
 
-        return response()->json([
-            "ok" => true,
-            "message" => "Materia '" . $modelo->descripcion . "' creada con éxito"
-        ], 200);
-
-    } catch (Exception $e) {
-        Log::error(__FILE__ . " > " . __FUNCTION__);
-        Log::error("Mensaje: " . $e->getMessage());
-        Log::error("Línea: " . $e->getLine());
-
-        return response()->json([
-            "ok" => false,
-            "msg_error" => "Error interno en el servidor"
-        ], 500);
-    }
-}
-
-
-
-    public function deleteAsignatura(Request $request, $id)
-{
-    try {
-        $asignatura = AsignaturaModel::find($id);
-
-        if (!$asignatura) {
-            return response()->json([
-                "ok" => false,
-                "message" => "La asignatura no existe con el id $id"
-            ], 400);
-        }
-
-        $result = $asignatura->update([
-            "estado" => "E",
-            "id_usuario_creador" => auth()->id() ?? 1,
-            "ip_actualizacion" => $request->ip(),
-            "fecha_actualizacion" => now(),  // Estado cambiado a "E" para marcarlo como desactivado
-        ]);
-
-        if ($result) {
             return response()->json([
                 "ok" => true,
-                "message" => "materia eliminada con éxito"
+                "message" => "Asignatura creada con éxito"
+            ], 201);
+
+        } catch (Exception $e) {
+            log::error(__FILE__ . " > " . __FUNCTION__);
+            log::error("Mensaje : " . $e->getMessage());
+            log::error("Linea : " . $e->getLine());
+
+            return response()->json([
+                "ok" => false,
+                "message" => "Error interno en el servidor"
+            ], 500);
+        }
+    }
+
+
+
+    public function deleteAsignatura(Request $request,$id)
+    {
+        try{
+            $asignatura = AsignaturaModel::find($id);
+            if(!$asignatura){
+                return Response()->json([
+                    "ok" => true,
+                    "message" => "La asignatura no existe con el id $id"
+                ], 400);
+            }
+
+            AsignaturaModel::find($id)->updated([
+                "estado" => "E",
+                "id_usuario_actualizo" => auth()->id() ?? 1,
+                "ip_actualizo" => $request->ip(),
+            ]);
+
+            return Response()->json([
+                "ok" => true,
+                "message" => "Asignatura creada con exito"
             ], 200);
-        } else {
-            return response()->json([
-                "ok" => false,
-                "message" => "No se pudo eliminar la materia"
-            ], 400);
+
+        }catch(Exception $e){
+            log::error( __FILE__ . " > " . __FUNCTION__);
+            log::error("Mensaje : " . $e->getMessage());
+            log::error("Linea : " . $e->getLine());
+
+            return Response()->json([
+                "ok" => true,
+                "message" => "Error interno en el servidor"
+            ], 500);
+
         }
-
-    } catch (Exception $e) {
-        Log::error(__FILE__ . " > " . __FUNCTION__);
-        Log::error("Mensaje: " . $e->getMessage());
-        Log::error("Línea: " . $e->getLine());
-
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
     }
-}
 
+    public function updateAsignatura(Request $request,$id)
+    {
+        try{
+            $asignatura = AsignaturaModel::find($id);
+            if(!$asignatura){
+                return Response()->json([
+                    "ok" => true,
+                    "message" => "El registro no existe con el id $id"
+                ],400);
+            }
 
+            AsignaturaModel::find($id)->update([
+                "descripcion" => isset($request->descripcion)?$request->descripcion:$asignatura->descripcion,
+                "id_usuario_actualizo" => auth()->id() ?? 1,
+                "ip_actualizo" => $request->ip(),
+                "estado" => isset($request->estado) ? $request->estado : "A"
+            ]);
+            return Response()->json([
+                "ok" => true,
+                "message" => "Asignatura actualizada con exito"
+            ],200);
+        }catch(Exception $e){
+            log::error( __FILE__ . " > " . __FUNCTION__);
+            log::error("Mensaje : " . $e->getMessage());
+            log::error("Linea : " . $e->getLine());
 
-
-public function updateAsignatura(Request $request, $id)
-{
-    try {
-        $asignatura = AsignaturaModel::find($id);
-        if (!$asignatura) {
-            return response()->json([
-                "ok" => false,
-                "message" => "El registro no existe con el id $id"
-            ], 400);
+            return Response()->json([
+                "ok" => true,
+                "message" => "Error interno en el servidor"
+            ], 500);
         }
-
-        // Verificar si la nueva descripción ya existe en otra asignatura
-        $asignaturaExistente = AsignaturaModel::where('descripcion', ucfirst(trim($request->descripcion)))
-            ->where('id_materia', '!=', $id) // Excluir la asignatura actual de la búsqueda
-            ->where('estado', 'A') // Considerar solo asignaturas activas
-            ->first();
-
-        if ($asignaturaExistente) {
-            return response()->json([
-                "ok" => false,
-                "message" => "La descripción de la asignatura ya existe."
-            ], 400);
-        }
-
-        // Actualizar la asignatura
-        $asignatura->update([
-            "descripcion" => isset($request->descripcion) ? ucfirst(trim($request->descripcion)) : $asignatura->descripcion,
-            "id_usuario_actualizo" => auth()->id() ?? 1,
-            "ip_actualizo" => $request->ip(),
-            "estado" => isset($request->estado) ? $request->estado : "A"
-        ]);
-
-        return response()->json([
-            "ok" => true,
-            "message" => "Asignatura actualizada con éxito"
-        ], 200);
-
-    } catch (Exception $e) {
-        Log::error(__FILE__ . " > " . __FUNCTION__);
-        Log::error("Mensaje : " . $e->getMessage());
-        Log::error("Linea : " . $e->getLine());
-
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
     }
-}
-
 
     public function showAsignatura()
     {
         try{
-            $asignatura = AsignaturaModel::select("id_materia","descripcion","fecha_creacion","estado","fecha_actualizacion")->whereIn("estado",["A","I"])->get();
+            $asignatura = AsignaturaModel::select("id_materia","descripcion")->whereIn("estado",["A","I"])->get();
             return Response()->json([
                 "ok" => true,
                 "data" => $asignatura
