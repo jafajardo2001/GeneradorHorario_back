@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\RolModel;
+use App\Models\TituloAcademicoModel;
 use App\Models\UsuarioModel;
 use App\Services\MensajeAlertasServicio;
 use Exception;
@@ -20,73 +21,64 @@ class UsuarioController extends Controller
     public function storeUsuarios(Request $request)
     {
         try {
-            $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
+            $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+
             $modelo = new UsuarioModel();
-            
             $campos_requeridos = $modelo->getFillable();
             $campos_recibidos = array_keys($request->all());
             $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
-            if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
+            if (!empty($campos_faltantes)) {
                 return response()->json([
                     "ok" => false,
                     "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
                 ], 400);
             }
-            $usuario = "";
-            $busqueda = UsuarioModel::where("cedula",$request->cedula)->first();
-            if($busqueda){
-                if($busqueda->estado == "A"){
-                    return response()->json([
-                        "ok" => false,
-                        "message" => "El usuario " . $busqueda->nombres . " "  . $busqueda->apellidos . " ya existe con el numero de cedula de " . $request->cedula 
-                    ], 400);
-                }
-                if($busqueda->estado == "I"){
-                    return response()->json([
-                        "ok" => false,
-                        "message" => "El usuario " . $busqueda->nombres . " "  . $busqueda->apellidos . " ya existe con el numero de cedula de " . $request->cedula  . " pero se encuetra inactivo"
-                    ], 400);
-                }
-                if($busqueda->estado == "E"){
-                    return response()->json([
-                        "ok" => false,
-                        "message" => "Este usuario fue eliminado"
-                    ], 400);
-                }
-            }
 
-            $nombres = explode(" ",trim(strtolower($request->nombres)));
-            $apellidos = explode(" ",trim(strtolower($request->apellidos)));
-            
-            if(count($nombres) == 2){
-                $usuario = ($nombres[0][0]);
-                $nombres = ucfirst(trim($nombres[0])) . "  " . ucfirst(trim($nombres[1]));
-            }else{
-                return Response()->json([
-                    "ok" => false,
-                    "message" => "Error en limpiar los nombres verifique bien si esta llenando bien los campos"
-                ]);
-            }
+            $usuarioExistente = UsuarioModel::where("cedula", $request->cedula)->first();
+            if ($usuarioExistente) {
+                $estadoMensaje = [
+                    "A" => "El usuario ya existe con el número de cédula.",
+                    "I" => "El usuario ya existe con el número de cédula pero está inactivo.",
+                    "E" => "Este usuario fue eliminado."
+                ];
 
-            if(count($apellidos) == 2){
-                $apellidos = ucfirst(trim($apellidos[0])) . "  " . ucfirst(trim($apellidos[1]));
-                $usuario = $usuario . trim($apellidos[1]);
-            }elseif(count($apellidos) == 3){
-                $usuario = $usuario . trim($apellidos[2]);
-                $apellidos = ucfirst(trim($apellidos[0])) . "  " . ucfirst(trim($apellidos[2]));
-            }else{
-                return Response()->json([
+                return response()->json([
                     "ok" => false,
-                    "message" => "Error en limpiar los apellidos verifique bien si esta llenando bien los campos"
-                ]);
-            }
-            $modelo_rol = RolModel::find($request->id_rol);
-            if(!$modelo_rol){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El rol no existe con el id  $request->id_rol"
+                    "message" => $estadoMensaje[$usuarioExistente->estado] ?? "Error desconocido"
                 ], 400);
             }
+
+            $nombres = explode(" ", trim(strtolower($request->nombres)));
+            $apellidos = explode(" ", trim(strtolower($request->apellidos)));
+
+            if (count($nombres) < 2 || count($apellidos) < 2) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Error en limpiar los nombres o apellidos, verifique si está llenando bien los campos."
+                ], 400);
+            }
+
+            $usuario = ucfirst(trim($nombres[0][0])) . ucfirst(trim($apellidos[0])) . ucfirst(trim($apellidos[1]));
+            $nombres = ucfirst(trim($nombres[0])) . " " . ucfirst(trim($nombres[1]));
+            $apellidos = ucfirst(trim($apellidos[0])) . " " . ucfirst(trim($apellidos[1]));
+
+            $modelo_rol = RolModel::find($request->id_rol);
+            if (!$modelo_rol) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El rol no existe con el id $request->id_rol"
+                ], 400);
+            }
+
+            $modelo_titulo = TituloAcademicoModel::find($request->id_titulo_academico);
+            if (!$modelo_titulo) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El título académico no existe con el id $request->id_titulo_academico"
+                ], 400);
+            }
+
+            $modelo->id_titulo_academico = $request->id_titulo_academico;
             $modelo->cedula = $request->cedula;
             $modelo->nombres = $nombres;
             $modelo->apellidos = $apellidos;
@@ -101,21 +93,20 @@ class UsuarioController extends Controller
             $modelo->estado = "A";
             $modelo->save();
 
-            return Response()->json([
+            return response()->json([
                 "ok" => true,
-                "message" => "Usuario creado con exito"
+                "message" => "Usuario creado con éxito"
             ], 200);
         } catch (Exception $e) {
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Línea : " . $e->getLine());
 
-            return Response()->json([
-                "ok" => true,
+            return response()->json([
+                "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
         }
-
     }
 
     public function showUsuarios()
@@ -229,7 +220,7 @@ public function showDocentes()
                 "ok" => true,
                 "message" => "Error interno en el servidor"
             ], 500);
-        }   
+        }
     }
     public function updateUsuario(Request $request, $id)
 {

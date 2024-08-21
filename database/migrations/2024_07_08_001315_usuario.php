@@ -20,6 +20,7 @@ return new class extends Migration
             $table->string('clave', 255);
             $table->binary('imagen_perfil')->nullable();
             $table->unsignedBigInteger('id_rol');
+            $table->unsignedBigInteger('id_titulo_academico');
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);
             $table->integer('id_usuario_creador');
