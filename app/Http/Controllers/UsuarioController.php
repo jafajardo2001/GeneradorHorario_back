@@ -155,6 +155,48 @@ class UsuarioController extends Controller
         ], 500);
     }
 }
+public function showDocentes()
+{
+    try {
+        // Obtener el ID del rol "Docente"
+        $rolDocente = RolModel::select('id_rol')
+            ->where('descripcion', '=', 'Docente')
+            ->first();
+
+        if (!$rolDocente) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Rol Docente no encontrado"
+            ], 404);
+        }
+
+        // Obtener los usuarios que tienen el rol de "Docente"
+        $docentes = UsuarioModel::select(
+            "id_usuario",
+            "nombres",
+            "apellidos",
+            UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo")
+        )
+        ->where('id_rol', '=', $rolDocente->id_rol)
+        ->where('estado', '=', 'A')
+        ->get();
+
+        return response()->json([
+            "ok" => true,
+            "data" => $docentes
+        ], 200);
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
 
 
     public function deleteUsuario(Request $request,$id)
@@ -191,52 +233,56 @@ class UsuarioController extends Controller
     }
     public function updateUsuario(Request $request, $id)
 {
-    // Validar los datos recibidos
-    $validatedData = $request->validate([
-        'cedula' => 'required|string|max:255',
-        'nombres' => 'required|string|max:255',
-        'apellidos' => 'required|string|max:255',
-        'perfil' => 'required|integer|exists:rol,id_rol',  // Asegúrate de que 'rol' es la tabla de roles y 'id_rol' es el campo ID
-    ]);
-
     try {
-        // Encontrar el usuario por ID
+        // Validar los datos entrantes
+        $validatedData = $request->validate([
+            'cedula' => 'required|string|max:10',
+            'nombres' => 'required|string|max:255',
+            'apellidos' => 'required|string|max:255',
+            'perfil' => 'required|integer',
+        ]);
+
+        // Buscar el usuario por ID
         $usuario = UsuarioModel::findOrFail($id);
 
-        // Verificar si la nueva cédula ya existe en otro usuario
-        $usuarioExistente = UsuarioModel::where('cedula', $validatedData['cedula'])
-            ->where('id_usuario', '!=', $id) // Excluir el usuario actual de la búsqueda
-            ->first();
+        // Generar el nuevo valor para el campo 'usuario'
+        $usuarioStr = strtolower(substr($validatedData['nombres'], 0, 1) . substr($validatedData['apellidos'], 0, 1));
 
-        if ($usuarioExistente) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'La cédula ya está en uso por otro usuario.'
-            ], 400);
-        }
-
-        // Actualizar los campos del usuario
+        // Actualizar los campos permitidos
         $usuario->cedula = $validatedData['cedula'];
         $usuario->nombres = $validatedData['nombres'];
         $usuario->apellidos = $validatedData['apellidos'];
-        $usuario->id_rol = $validatedData['perfil'];
-        
+        $usuario->perfil = $validatedData['perfil'];
+        $usuario->usuario = $usuarioStr;
+
         // Guardar los cambios
         $usuario->save();
 
         return response()->json([
             'ok' => true,
-            'message' => 'Usuario actualizado con éxito'
+            'message' => 'Usuario actualizado correctamente',
         ], 200);
-    } catch (\Exception $e) {
-        // Manejo de errores
-        Log::error('Error al actualizar usuario: ' . $e->getMessage());
+
+    } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
         return response()->json([
             'ok' => false,
-            'message' => 'Error interno en el servidor'
+            'message' => 'Usuario no encontrado',
+        ], 404);
+    } catch (\Illuminate\Validation\ValidationException $e) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Error en la validación de los datos',
+            'errors' => $e->errors(),
+        ], 422);
+    } catch (\Exception $e) {
+        return response()->json([
+            'ok' => false,
+            'message' => 'Error al actualizar el usuario',
+            'error' => $e->getMessage(),
         ], 500);
     }
 }
+
 
 
 public function show($id)
