@@ -42,7 +42,9 @@ Route::prefix('istg')->group(
         Route::get("show_data_asignatura/", [AsignaturaController::class, 'showAsignatura']);
         Route::put("update_asignatura/{id}", [AsignaturaController::class, 'updateAsignatura']);
         Route::post("create_asignatura/", [AsignaturaController::class, 'storeAsignatura']);
-        Route::delete("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
+        Route::put("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
+        Route::put("update_estado_asignatura/{id}", [AsignaturaController::class, 'updateEstadoAsignatura']);
+
         //CARRERA
         Route::get("show_carrera/", [CarreraController::class, 'showCarrera']);
         Route::put("update_carrera/{id}", [CarreraController::class, 'updateCarrera']);
@@ -60,13 +62,17 @@ Route::prefix('istg')->group(
         Route::delete("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
-        // Route::post("edit_usuario/", [UsuarioController::class, 'editUser']);
-        Route::delete("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        Route::get("usuario/{id}", [UsuarioController::class, 'show']);
+        Route::put("update_usuario/{id}", [UsuarioController::class, 'updateUsuario']);
+        Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);
         Route::post("create_rol/", [RolController::class, 'storeRol']);
-        Route::delete("delete_rol/", [RolController::class, 'deleteRol']);
+        Route::put("delete_rol/{id}", [RolController::class, 'deleteRol']);
+        Route::put("update_rol/{id}", [RolController::class, 'updateRol']);
+
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
@@ -81,7 +87,7 @@ Route::prefix('istg')->group(
                 Route::post("create_horario/", [DistribucionHorario::class, 'storeHorario']);
                 Route::get("show_dist_horarios/", [DistribucionHorario::class, 'showDistribucion']);
                 Route::put("update_distribucion/{id}", [DistribucionHorario::class, 'updatedistribucion']);
-                Route::delete("delete_distribucion/{id}", [DistribucionHorario::class, 'deleteDistribucion']);
+                Route::put("delete_distribucion/{id}", [DistribucionHorario::class, 'deleteDistribucion']);
             }
         );
         Route::group(

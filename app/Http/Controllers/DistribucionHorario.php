@@ -21,7 +21,7 @@ class DistribucionHorario extends Controller
         try {
             DB::beginTransaction();
             $detalles = $request->input("data");
-            $idUsuario = 1;
+            $idUsuario = $request->input("id_usuario"); 
             $idPeriodoElectivo = 1;
             $idEducacionGlobal = 1;
             $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal){
@@ -87,44 +87,54 @@ class DistribucionHorario extends Controller
     }
 
     public function showDistribucion(Request $request)
-    {
-        try {
-            $data = ModelsDistribucionHorario::select(
-                "educacion_global.nombre as educacion_global_nombre",
-                "carreras.nombre as nombre_carrera",
-                "materias.descripcion as materia",
-                "nivel.termino as nivel",
-                "paralelo.paralelo",
-                "distribuciones_horario_academica.dia",
-                "distribuciones_horario_academica.hora_inicio",
-                "distribuciones_horario_academica.hora_termina",
-                "distribuciones_horario_academica.fecha_actualizacion"
-                )
-            ->join("educacion_global", "distribuciones_horario_academica.id_educacion_global", "educacion_global.id_educacion_global")
-            ->join("carreras", "distribuciones_horario_academica.id_carrera", "carreras.id_carrera")
-            ->join("materias", "distribuciones_horario_academica.id_materia", "materias.id_materia")
-            ->join("nivel", "distribuciones_horario_academica.id_nivel", "nivel.id_nivel")
-            ->join("paralelo", "distribuciones_horario_academica.id_paralelo", "paralelo.id_paralelo")
-            ->orderBy("distribuciones_horario_academica.dia")
-            ->get();
+{
+    try {
+        $data = ModelsDistribucionHorario::select(
+            "educacion_global.nombre as educacion_global_nombre",
+            "carreras.nombre as nombre_carrera",
+            "materias.descripcion as materia",
+            "nivel.termino as nivel",
+            "id_distribucion as id_distribucion",
+            "paralelo.paralelo",
+            "distribuciones_horario_academica.dia",
+            "distribuciones_horario_academica.hora_inicio",
+            "distribuciones_horario_academica.hora_termina",
+            "distribuciones_horario_academica.fecha_actualizacion",
+            DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente") // Combina nombre y apellido
+        )
+        ->join("educacion_global", "distribuciones_horario_academica.id_educacion_global", "=", "educacion_global.id_educacion_global")
+        ->join("carreras", "distribuciones_horario_academica.id_carrera", "=", "carreras.id_carrera")
+        ->join("materias", "distribuciones_horario_academica.id_materia", "=", "materias.id_materia")
+        ->join("nivel", "distribuciones_horario_academica.id_nivel", "=", "nivel.id_nivel")
+        ->join("paralelo", "distribuciones_horario_academica.id_paralelo", "=", "paralelo.id_paralelo")
+        ->join("usuarios", "distribuciones_horario_academica.id_usuario", "=", "usuarios.id_usuario")
+        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
+        ->where("rol.descripcion", "=", "Docente")
+        ->where("distribuciones_horario_academica.estado", "=", "A") // Filtro para estado "A"
+        ->orderBy("distribuciones_horario_academica.dia")
+        ->get();
 
-            return response()->json([
-                "ok" => true,
-                "data" => $data
-            ], 200);
-        } catch (Exception $e) {
-            // Registro de logs de error
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje : " . $e->getMessage());
-            Log::error("Línea : " . $e->getLine());
+        return response()->json([
+            "ok" => true,
+            "data" => $data
+        ], 200);
+    } catch (Exception $e) {
+        // Registro de logs de error
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
 
-            // Respuesta JSON en caso de error
-            return response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
-        }
+        // Respuesta JSON en caso de error
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
+
+
+
 
     public function updateDistribucion(Request $request, $id)
     {
@@ -174,44 +184,44 @@ class DistribucionHorario extends Controller
         }
     }
 
-    public function deleteDistribucion(Request $request)
-    {
-        try {
-            // Obtener el ID del request
-            $id = $request->input('id') ?? null;
-
-            if (!$id) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "Error: Falta el parámetro del ID."
-                ], 404);
-            }
-
-            // Buscar la distribución por ID
-            $distribucion = ModelsDistribucionHorario::find($id);
-
-            if (!$distribucion) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "Error: El registro no existe."
-                ], 404);
-            }
-
-            // Actualizar el estado a eliminado y los datos de actualización
-            $distribucion->update([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "fecha_actualizacion" => Carbon::now()
-            ]);
-
-        } catch (Exception $e) {
+    public function deleteDistribucion(Request $request, $id)
+{
+    try {
+        // Verificar el parámetro del ID
+        if (!$id) {
             return response()->json([
                 "ok" => false,
-                "mensaje" => "Error interno en el servidor."
-            ], 500);
-        } finally {
-            return response()->json([], 202);
+                "mensaje" => "Error: Falta el parámetro del ID."
+            ], 400); // Código 400 para solicitud incorrecta
         }
+
+        // Buscar la distribución por ID
+        $distribucion = ModelsDistribucionHorario::find($id);
+
+        if (!$distribucion) {
+            return response()->json([
+                "ok" => false,
+                "mensaje" => "Error: El registro no existe."
+            ], 404);
+        }
+
+        // Actualizar el estado a eliminado y los datos de actualización
+        $distribucion->update([
+            "estado" => "E",
+            "id_usuario_actualizo" => auth()->id() ?? 1,
+            "fecha_actualizacion" => Carbon::now()
+        ]);
+
+        return response()->json([
+            "ok" => true
+        ], 202); // Código 202 para aceptación de la solicitud
+    } catch (Exception $e) {
+        return response()->json([
+            "ok" => false,
+            "mensaje" => "Error interno en el servidor."
+        ], 500);
     }
+}
+
 
 }
