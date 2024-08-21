@@ -13,6 +13,15 @@ class RolModel extends Model
     const CREATED_AT = 'fecha_creacion';
     const UPDATED_AT = 'fecha_actualizacion';
     protected $fillable = [
-        'descripcion'
+        'descripcion',
+        'ip_creacion',
+        'ip_actualizacion',
+        'id_usuario_creador',
+        'id_usuario_actualizo',
+        'fecha_creacion',
+        'fecha_actualizacion',
+        'estado'
     ];
-} 
+
+
+}
