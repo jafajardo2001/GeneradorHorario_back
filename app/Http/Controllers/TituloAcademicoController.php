@@ -47,6 +47,17 @@ class TituloAcademicoController extends Controller
                     "mensaje" => "Hace falta el parametro descripcion"
                 ],404);
             }
+
+            // Validar si el título académico ya existe
+            $tituloExistente = TituloAcademicoModel::where('descripcion', $request->input('descripcion'))->first();
+
+            if ($tituloExistente) {
+                return response()->json([
+                    "ok" => false,
+                    "mensaje" => "El título académico ya existe"
+                ], 400);
+            }
+
             $modelo = new TituloAcademicoModel();
             $modelo->descripcion = $request->input('descripcion');
             $modelo->ip_creacion = request_ip::ip();

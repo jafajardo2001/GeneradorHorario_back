@@ -29,6 +29,15 @@ class ParaleloController extends Controller
                     "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
                 ], 400);
             }
+
+            // Validar si el paralelo ya existe
+            $paraleloExistente = ParaleloModel::where('paralelo', $request->paralelo)->first();
+            if ($paraleloExistente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El paralelo ya existe"
+                ], 400);
+            }
             
             $modelo->paralelo = $request->paralelo;
             $modelo->ip_creacion = $request->ip();

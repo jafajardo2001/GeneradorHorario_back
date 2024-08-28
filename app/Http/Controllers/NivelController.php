@@ -24,6 +24,19 @@ class NivelController extends Controller
                     "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
                 ], 400);
             }
+
+             // Validar si el nivel ya existe
+             $nivelExistente = NivelModel::where('numero', $request->numero)
+             ->where('nemonico', $request->nemonico)
+             ->where('termino', $request->termino)
+             ->first();
+
+            if ($nivelExistente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El nivel ya existe"
+                ], 400);
+            }
             
             $modelo->numero = $request->numero;
             $modelo->nemonico = $request->nemonico;
