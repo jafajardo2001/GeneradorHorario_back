@@ -19,67 +19,81 @@ class PlanificacionAcademica extends Controller
     
     public function store(Request $request)
     {
-        try{
+        try {
             $info_request = $request->data;
-            if(!is_array($info_request)){
-                throw new Exception("Los parametros de esta api es que sean arreglo");
+            if (!is_array($info_request)) {
+                throw new Exception("Los parámetros de esta API deben ser un arreglo");
             }
 
-            $inst = array_values(collect($info_request)->pluck("id_instituto")->unique()->toArray());
-            $planificacion = PlanificacionAcademicaModel::whereIn("id_educacion_global",$inst)
-            ->join("nivel","planificacion_academica.id_nivel","nivel.id_nivel")
-            ->join("paralelo","planificacion_academica.id_paralelo","paralelo.id_paralelo")
-            ->join("usuarios","usuarios.id_usuario","planificacion_academica.coordinador_carrera")
-            ->where("planificacion_academica.estado","A")
-            ->get();
-            $arreglo = [];
-            $info_insert = collect($info_request)->map(function($valor) use ($planificacion,$request){
-                $valor = (object)$valor;
-                $id_instituto = isset($valor->id_instituto) ? $valor->id_instituto : 0;
-                $id_carrera = isset($valor->id_carrera) ? $valor->id_carrera : 0;
-                $id_materia = isset($valor->id_materia) ? $valor->id_materia : 0;
-                $id_curso = isset($valor->id_curso) ? $valor->id_curso : 0;
-                $id_paralelo = isset($valor->id_paralelo) ? $valor->id_paralelo : 0;
-                $id_coordinador = isset($valor->id_coordinador) ? $valor->id_coordinador : 0;
-                $id_periodo_electivo = isset($valor->id_periodo_electivo) ? $valor->id_periodo_electivo : 0;
+            $duplicates = [];
+            foreach ($info_request as $valor) {
+                $valor = (object)$valor;    
+                $id_instituto = $valor->id_instituto ?? 0;
+                $id_carrera = $valor->id_carrera ?? 0;
+                $id_materia = $valor->id_materia ?? 0;
+                $id_curso = $valor->id_curso ?? 0;
+                $id_paralelo = $valor->id_paralelo ?? 0;
+                $id_coordinador = $valor->id_coordinador ?? 0;
+                $id_periodo_electivo = $valor->id_periodo_electivo ?? 0;
                 
-                $data = $planificacion->where("id_educacion_global",$id_instituto)
-                ->where("id_carrera",$id_carrera)
-                ->where("id_materia",$id_materia)
-                ->where("id_nivel",$id_curso)
-                ->where("id_paralelo",$id_paralelo)->first();
-                if($data){
-                    throw new Exception("Error ya existe una planificacion Academica");
+                try {
+                    $exists = PlanificacionAcademicaModel::where("id_educacion_global", $id_instituto)
+                                ->where("id_carrera", $id_carrera)
+                                ->where("id_materia", $id_materia)
+                                ->where("id_nivel", $id_curso)
+                                ->where("id_paralelo", $id_paralelo)
+                                ->where("estado", "A")
+                                ->exists();
+    
+                    if ($exists) {
+                        throw new Exception("Ya existe una planificación académica con los mismos parámetros.");
                 }
-                return [
-                    "id_educacion_global" => $id_instituto,
-                    "id_carrera" => $id_carrera,
-                    "id_materia" => $id_materia,
-                    "id_nivel" => $id_curso,
-                    "id_paralelo" => $id_paralelo,
-                    "coordinador_carrera" => $id_coordinador, 
-                    "id_periodo_academico" => $id_periodo_electivo,
-                    "ip_creacion" => $request->ip(),
-                    "ip_actualizacion" => $request->ip(),   
-                    "id_usuario_creador" => 1,
-                    "id_usuario_actualizo" => 1,
-                    "fecha_creacion" => Carbon::now(),
-                    "fecha_actualizacion" => Carbon::now()
-                ];
-            });
 
-            PlanificacionAcademicaModel::insert(array_values($info_insert->toArray()));
-            log::info("Planificacion creada con exito");
-            return Response()->json([
-                "ok" => true,
-                "message" => "Planificacion creada con exito"
-            ],200); 
-        }catch(Exception $e){
-            //23000 codigo ambiguo de SQL
-            log::error(__FILE__ ." > ". __FUNCTION__);
-            log::error($e->getMessage());
-            log::error($e->getLine());
-            return Response()->json([
+                // Código para crear la nueva planificación académica...
+
+                return response()->json([
+                    'ok' => true,
+                    'message' => 'Planificación académica creada con éxito.',
+                ], 200);
+
+            } catch (Exception $e) {
+                return response()->json([
+                    'ok' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+        }
+
+        $info_insert = collect($info_request)->map(function($valor) use ($request) {
+            $valor = (object)$valor;
+            return [
+                "id_educacion_global" => $valor->id_instituto,
+                "id_carrera" => $valor->id_carrera,
+                "id_materia" => $valor->id_materia,
+                "id_nivel" => $valor->id_curso,
+                "id_paralelo" => $valor->id_paralelo,
+                "coordinador_carrera" => $valor->id_coordinador,
+                "id_periodo_academico" => $valor->id_periodo_electivo,
+                "ip_creacion" => $request->ip(),
+                "ip_actualizacion" => $request->ip(),   
+                "id_usuario_creador" => 1,
+                "id_usuario_actualizo" => 1,
+                "fecha_creacion" => Carbon::now(),
+                "fecha_actualizacion" => Carbon::now()
+            ];
+        });
+
+        PlanificacionAcademicaModel::insert($info_insert->toArray());
+        Log::info("Planificación creada con éxito");
+        return response()->json([
+            "ok" => true,
+            "message" => "Planificacion creada con exito"
+        ],200); 
+    }catch(Exception $e){
+        Log::error(__FILE__ ." > ". __FUNCTION__);
+        Log::error($e->getMessage());
+        Log::error($e->getLine());
+        return response()->json([
                 "ok" => false,
                 "message" => $e->getMessage()
             ],500); 
