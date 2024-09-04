@@ -100,7 +100,9 @@ class DistribucionHorario extends Controller
             "distribuciones_horario_academica.hora_inicio",
             "distribuciones_horario_academica.hora_termina",
             "distribuciones_horario_academica.fecha_actualizacion",
-            DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente") // Combina nombre y apellido
+            DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente"), // Combina nombre y apellido
+            "usuarios.cedula as cedula_docente",
+            "titulo_academico.descripcion as titulo_academico_docente" // Obtiene la descripción del título académico
         )
         ->join("educacion_global", "distribuciones_horario_academica.id_educacion_global", "=", "educacion_global.id_educacion_global")
         ->join("carreras", "distribuciones_horario_academica.id_carrera", "=", "carreras.id_carrera")
@@ -109,6 +111,7 @@ class DistribucionHorario extends Controller
         ->join("paralelo", "distribuciones_horario_academica.id_paralelo", "=", "paralelo.id_paralelo")
         ->join("usuarios", "distribuciones_horario_academica.id_usuario", "=", "usuarios.id_usuario")
         ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
+        ->join("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico") // Join para obtener el título académico
         ->where("rol.descripcion", "=", "Docente")
         ->where("distribuciones_horario_academica.estado", "=", "A") // Filtro para estado "A"
         ->orderBy("distribuciones_horario_academica.dia")
