@@ -25,5 +25,8 @@ class UsuarioModel extends Model
         'id_titulo_academico'
 
     ];
-
+    public function tituloAcademico()
+    {
+        return $this->belongsTo(TituloAcademicoModel::class, 'id_titulo_academico');
+    }
 }

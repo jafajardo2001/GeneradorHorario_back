@@ -147,50 +147,51 @@ class UsuarioController extends Controller
     }
 }
 
-    public function showDocentes()
-    {
-        try {
-            // Obtener el ID del rol "Docente"
-            $rolDocente = RolModel::select('id_rol')
-                ->where('descripcion', '=', 'Docente')
-                ->first();
+public function showDocentes()
+{
+    try {
+        // Obtener el ID del rol "Docente"
+        $rolDocente = RolModel::select('id_rol')
+            ->where('descripcion', '=', 'Docente')
+            ->first();
 
-            if (!$rolDocente) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Rol Docente no encontrado"
-                ], 404);
-            }
-
-            // Obtener los usuarios que tienen el rol de "Docente"
-            $docentes = UsuarioModel::select(
-                "id_usuario",
-                "nombres",
-                "apellidos",
-                "cedula",
-                UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo"),
-                "TituloAcademicoModel.descripcion as titulo_academico"
-            )
-            ->join('TituloAcademicoModel', 'UsuarioModel.id_titulo_academico', '=', 'TituloAcademicoModel.id_titulo_academico')
-            ->where('id_rol', '=', $rolDocente->id_rol)
-            ->where('UsuarioModel.estado', '=', 'A')
-            ->get();
-
-            return response()->json([
-                "ok" => true,
-                "data" => $docentes
-            ], 200);
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje : " . $e->getMessage());
-            Log::error("Línea : " . $e->getLine());
-
+        if (!$rolDocente) {
             return response()->json([
                 "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
+                "message" => "Rol Docente no encontrado"
+            ], 404);
         }
+
+        // Obtener los usuarios que tienen el rol de "Docente"
+        $docentes = UsuarioModel::select(
+            "usuarios.id_usuario",
+            "usuarios.nombres",
+            "usuarios.apellidos",
+            "usuarios.cedula",
+            UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
+            "titulo_academico.descripcion as titulo_academico"
+        )
+        ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+        ->where('usuarios.id_rol', '=', $rolDocente->id_rol)
+        ->where('usuarios.estado', '=', 'A')
+        ->get();
+
+        return response()->json([
+            "ok" => true,
+            "data" => $docentes
+        ], 200);
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
 
     public function deleteUsuario(Request $request,$id)
