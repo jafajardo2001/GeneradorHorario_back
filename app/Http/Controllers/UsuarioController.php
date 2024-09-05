@@ -169,11 +169,11 @@ class UsuarioController extends Controller
                 "apellidos",
                 "cedula",
                 UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo"),
-                "TituloAcademicoModel.descripcion as titulo_academico"
+                "titulo_academico.descripcion as titulo_academico"
             )
-            ->join('TituloAcademicoModel', 'UsuarioModel.id_titulo_academico', '=', 'TituloAcademicoModel.id_titulo_academico')
+            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
             ->where('id_rol', '=', $rolDocente->id_rol)
-            ->where('UsuarioModel.estado', '=', 'A')
+            ->where('usuarios.estado', '=', 'A')
             ->get();
 
             return response()->json([
@@ -191,6 +191,7 @@ class UsuarioController extends Controller
             ], 500);
         }
     }
+
 
 
     public function deleteUsuario(Request $request,$id)
