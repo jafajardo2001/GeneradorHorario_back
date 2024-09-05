@@ -47,6 +47,8 @@ class ArrancarSistema extends Seeder
                 "cedula" => "#########",
                 "nombres" => "Admin Admin",
                 "apellidos" => "Administrador Administrador",
+                "correo" =>"admin@est.istg.edu.ec",
+                "telefono" => "0987654321",
                 "usuario" => "Admin",
                 "clave" => bcrypt("_Admin#2023*"),
                 "id_rol" => 1,

@@ -82,6 +82,8 @@ class UsuarioController extends Controller
             $modelo->cedula = $request->cedula;
             $modelo->nombres = $nombres;
             $modelo->apellidos = $apellidos;
+            $modelo->correo = $request->correo; // Agregar correo
+            $modelo->telefono = $request->telefono; // Agregar teléfono
             $modelo->usuario = $usuario;
             $modelo->clave = bcrypt($request->cedula);
             $modelo->id_rol = $request->id_rol;
@@ -119,6 +121,8 @@ class UsuarioController extends Controller
             "usuarios.cedula",
             "usuarios.nombres",
             "usuarios.apellidos",
+            "usuarios.correo",
+            "usuarios.telefono",
             "usuarios.usuario",
             "usuarios.imagen_perfil",
             "rol.id_rol",
@@ -168,6 +172,8 @@ class UsuarioController extends Controller
                 "nombres",
                 "apellidos",
                 "cedula",
+                "correo",  // Agregar correo
+                "telefono",  // Agregar teléfono
                 UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo"),
                 "titulo_academico.descripcion as titulo_academico"
             )

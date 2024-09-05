@@ -102,6 +102,8 @@ class DistribucionHorario extends Controller
             "distribuciones_horario_academica.fecha_actualizacion",
             DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente"), // Combina nombre y apellido
             "usuarios.cedula as cedula_docente",
+            "usuarios.correo as correo_docente",
+            "usuarios.telefono as telefono_docente",
             "titulo_academico.descripcion as titulo_academico_docente" // Obtiene la descripción del título académico
         )
         ->join("educacion_global", "distribuciones_horario_academica.id_educacion_global", "=", "educacion_global.id_educacion_global")
