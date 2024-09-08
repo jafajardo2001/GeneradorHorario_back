@@ -151,15 +151,6 @@ class UsuarioController extends Controller
     }
 }
 
-<<<<<<< HEAD
-public function showDocentes()
-{
-    try {
-        // Obtener el ID del rol "Docente"
-        $rolDocente = RolModel::select('id_rol')
-            ->where('descripcion', '=', 'Docente')
-            ->first();
-=======
     public function showDocentes()
     {
         try {
@@ -199,7 +190,6 @@ public function showDocentes()
             Log::error(__FILE__ . " > " . __FUNCTION__);
             Log::error("Mensaje : " . $e->getMessage());
             Log::error("Línea : " . $e->getLine());
->>>>>>> origin/FajardoG
 
         if (!$rolDocente) {
             return response()->json([
