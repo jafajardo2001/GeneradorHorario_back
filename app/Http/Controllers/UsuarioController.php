@@ -82,6 +82,8 @@ class UsuarioController extends Controller
             $modelo->cedula = $request->cedula;
             $modelo->nombres = $nombres;
             $modelo->apellidos = $apellidos;
+            $modelo->correo = $request->correo; // Agregar correo
+            $modelo->telefono = $request->telefono; // Agregar teléfono
             $modelo->usuario = $usuario;
             $modelo->clave = bcrypt($request->cedula);
             $modelo->id_rol = $request->id_rol;
@@ -119,6 +121,8 @@ class UsuarioController extends Controller
             "usuarios.cedula",
             "usuarios.nombres",
             "usuarios.apellidos",
+            "usuarios.correo",
+            "usuarios.telefono",
             "usuarios.usuario",
             "usuarios.imagen_perfil",
             "rol.id_rol",
@@ -147,6 +151,7 @@ class UsuarioController extends Controller
     }
 }
 
+<<<<<<< HEAD
 public function showDocentes()
 {
     try {
@@ -154,6 +159,47 @@ public function showDocentes()
         $rolDocente = RolModel::select('id_rol')
             ->where('descripcion', '=', 'Docente')
             ->first();
+=======
+    public function showDocentes()
+    {
+        try {
+            // Obtener el ID del rol "Docente"
+            $rolDocente = RolModel::select('id_rol')
+                ->where('descripcion', '=', 'Docente')
+                ->first();
+
+            if (!$rolDocente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Rol Docente no encontrado"
+                ], 404);
+            }
+
+            // Obtener los usuarios que tienen el rol de "Docente"
+            $docentes = UsuarioModel::select(
+                "id_usuario",
+                "nombres",
+                "apellidos",
+                "cedula",
+                "correo",  // Agregar correo
+                "telefono",  // Agregar teléfono
+                UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo"),
+                "titulo_academico.descripcion as titulo_academico"
+            )
+            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+            ->where('id_rol', '=', $rolDocente->id_rol)
+            ->where('usuarios.estado', '=', 'A')
+            ->get();
+
+            return response()->json([
+                "ok" => true,
+                "data" => $docentes
+            ], 200);
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Línea : " . $e->getLine());
+>>>>>>> origin/FajardoG
 
         if (!$rolDocente) {
             return response()->json([
@@ -191,6 +237,7 @@ public function showDocentes()
         ], 500);
     }
 }
+
 
 
 

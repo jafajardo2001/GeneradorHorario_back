@@ -21,6 +21,8 @@ class UsuarioModel extends Model
         'cedula',
         'nombres',
         'apellidos',
+        'correo',
+        'telefono',
         'id_rol',
         'id_titulo_academico'
 

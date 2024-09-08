@@ -66,8 +66,8 @@ class ParaleloController extends Controller
     public function deleteParalelo(Request $request,$id)
     {  
         try{
-            $asignatura = ParaleloModel::find($id);
-            if(!$asignatura){
+            $paralelo = ParaleloModel::find($id);
+            if(!$paralelo){
                 return Response()->json([
                     "ok" => true,
                     "message" => "El paralelo no existe con el id $id"
@@ -83,7 +83,7 @@ class ParaleloController extends Controller
 
             return Response()->json([
                 "ok" => true,
-                "message" => "Carrera eliminada con exito"
+                "message" => "Paralelo eliminado con exito"
             ],200);
         }catch(Exception $e){
             log::error( __FILE__ . " > " . __FUNCTION__);

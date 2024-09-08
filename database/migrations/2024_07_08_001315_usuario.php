@@ -16,6 +16,8 @@ return new class extends Migration
             $table->string('cedula', 18)->unique();
             $table->string('nombres', 255);
             $table->string('apellidos', 255);
+            $table->string('correo')->unique();
+            $table->string('telefono', 15); // Teléfono sin auto_increment ni primary key
             $table->string('usuario', 150);
             $table->string('clave', 255);
             $table->binary('imagen_perfil')->nullable();
