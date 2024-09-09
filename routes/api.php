@@ -54,12 +54,12 @@ Route::prefix('istg')->group(
         Route::get("show_nivel/", [NivelController::class, 'showNivel']);
         Route::put("update_nivel/{id}", [NivelController::class, 'updateNivel']);
         Route::post("create_nivel/", [NivelController::class, 'storeNivelCarrera']);
-        Route::delete("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
+        Route::put("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
         //PARALELO
         Route::get("showParalelo/", [ParaleloController::class, 'showParalelo']);
         Route::put("update_paralelo/{id}", [ParaleloController::class, 'updateParalelo']);
         Route::post("create_paralelo/", [ParaleloController::class, 'storeParalelo']);
-        Route::delete("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
+        Route::put("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
         Route::get("usuario/{id}", [UsuarioController::class, 'show']);

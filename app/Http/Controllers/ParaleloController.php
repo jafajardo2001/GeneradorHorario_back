@@ -18,17 +18,7 @@ class ParaleloController extends Controller
         try{
             
             $modelo = new ParaleloModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
-        
-            if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
-                log::info("Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes));
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-                ], 400);
-            }
+           
 
             // Validar si el paralelo ya existe
             $paraleloExistente = ParaleloModel::where('paralelo', $request->paralelo)->first();
@@ -74,11 +64,11 @@ class ParaleloController extends Controller
                 ], 400);    
             }
             
-            ParaleloModel::find($id)->updated([
+            ParaleloModel::find($id)->update([
                 "estado" => "E",
                 "id_usuario_actualizo" => auth()->id() ?? 1,
                 "ip_actualizo" => $request->ip(),
-
+                "fecha_actualizacion" => now(),
             ]);
 
             return Response()->json([
