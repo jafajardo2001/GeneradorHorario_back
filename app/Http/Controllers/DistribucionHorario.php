@@ -24,23 +24,38 @@ class DistribucionHorario extends Controller
             $idUsuario = $request->input("id_usuario"); 
             $idPeriodoElectivo = 1;
             $idEducacionGlobal = 1;
-            $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal){
-                $values = (object)$values;
-                $consulta = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+
+            // Validación: Limitar 8 materias por día
+            $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
                 ->where("id_periodo_academico", $idPeriodoElectivo)
                 ->where("id_educacion_global", $idEducacionGlobal)
-                ->where("id_carrera", $values->id_carrera)
-                ->where("id_materia", $values->id_materia)
-                ->where("id_nivel", $values->id_curso)
-                ->where("id_paralelo", $values->id_paralelo)
-                ->where("dia", $values->dia)
-                ->where("hora_inicio", $values->hora_inicio)
-                ->where("hora_termina", $values->hora_termina)
+                ->where("dia", $detalles[0]['dia']) // Asumimos que todas las materias del array son para el mismo día
                 ->where("estado", "A")
-                ->get();
+                ->count();
+
+            if ($materiasPorDia + count($detalles) > 8) {
+                throw new Exception("No se puede asignar más de 8 materias para el día " . $detalles[0]['dia']);
+            }
+
+            $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal){
+                $values = (object)$values;
+                
+                // Validar solapamiento de horarios
+                $consulta = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+                    ->where("id_periodo_academico", $idPeriodoElectivo)
+                    ->where("id_educacion_global", $idEducacionGlobal)
+                    ->where("id_carrera", $values->id_carrera)
+                    ->where("id_materia", $values->id_materia)
+                    ->where("id_nivel", $values->id_curso)
+                    ->where("id_paralelo", $values->id_paralelo)
+                    ->where("dia", $values->dia)
+                    ->where("hora_inicio", $values->hora_inicio)
+                    ->where("hora_termina", $values->hora_termina)
+                    ->where("estado", "A")
+                    ->get();
 
                 if ($consulta->count() > 0) {
-                throw new Exception("Ocurrió un error al crear este horario, ya existe una hora en el rango de " . $values->hora_inicio . " y " . $values->hora_termina);
+                    throw new Exception("Ya existe una hora en el rango de " . $values->hora_inicio . " y " . $values->hora_termina);
                 }
 
                 return [
@@ -68,23 +83,23 @@ class DistribucionHorario extends Controller
             DB::commit();
             return Response()->json([
                 "ok"=>true,
-                "mensaje"=> "Horario creado con exito."
+                "mensaje"=> "Horario creado con éxito."
             ]);
-        }catch(Exception $e){
+        } catch(Exception $e) {
             DB::rollBack();
-            log::alert("A ocurrido un error");
-            log::alert("Mensaje => " .$e->getMessage());
-            log::alert("Linea => " .$e->getLine());
+            log::alert("Ha ocurrido un error");
+            log::alert("Mensaje => " . $e->getMessage());
+            log::alert("Línea => " . $e->getLine());
             $response->setok(false);
             $response->setmensagge($e->getMessage());
             return Response()->json([
-                "ok"=>false,
-                "informacion"=>"",
-                "mensaje_error"=> $e->getMessage()
+                "ok" => false,
+                "informacion" => "",
+                "mensaje_error" => $e->getMessage()
             ]);
         }
-
     }
+
 
     public function showDistribucion(Request $request)
     {
