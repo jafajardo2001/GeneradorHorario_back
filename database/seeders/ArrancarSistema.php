@@ -12,6 +12,7 @@ use App\Models\InstitutoModel;
 use App\Models\PeriodoElectivoModel;
 use App\Models\RolModel;
 use App\Models\UsuarioModel;
+use App\Models\Categoria;
 use App\Models\TituloAcademicoModel;
 use Carbon\CarbonConverterInterface;
 
@@ -101,6 +102,13 @@ class ArrancarSistema extends Seeder
             "fecha_creacion" => Carbon::now(),
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
+        ]);
+        Categoria::insert([
+            ["nombre" => "Docencia"],
+            ["nombre" => "Materias"],
+            ["nombre" => "Investigación"],
+            ["nombre" => "Prácticas Preprofesionales"],
+            ["nombre" => "Gestión Administrativa"]
         ]);
     }
 }

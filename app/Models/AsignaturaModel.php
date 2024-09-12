@@ -13,7 +13,13 @@ class AsignaturaModel extends Model
     
     const CREATED_AT = 'fecha_creacion';
     const UPDATED_AT = 'fecha_actualizacion';
+    // Definir la relación con el modelo CategoriaModel
+    
 
     // Asegúrate de que 'estado' esté en el array $fillable para permitir la actualización
-    protected $fillable = ['descripcion', 'estado', 'id_usuario_creador', 'ip_actualizacion', 'fecha_actualizacion'];
+    protected $fillable = ['descripcion', 'id_categoria', 'ip_creacion', 'ip_actualizacion', 'id_usuario_creador', 'id_usuario_actualizo', 'estado'];
+    public function categoria()
+    {
+        return $this->belongsTo(Categoria::class, 'id_categoria', 'id_categoria');
+    }
 }

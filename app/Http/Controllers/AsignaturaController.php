@@ -14,13 +14,11 @@ class AsignaturaController extends Controller
     public function storeAsignatura(Request $request)
 {
     try {
-        // Validar que el campo 'descripcion' esté presente
-        if (!isset($request->descripcion)) {
-            return response()->json([
-                "ok" => false,
-                "msg_error" => "El campo de descripción es obligatorio"
-            ], 400);
-        }
+        // Validar que los campos 'descripcion' y 'id_categoria' estén presentes
+        $validatedData = $request->validate([
+            'descripcion' => 'required|string|max:255',
+            'id_categoria' => 'required|integer|exists:categorias,id_categoria', // Asegúrate de que `categorias` es la tabla correcta y `id` es el campo
+        ]);
 
         // Verificar si ya existe una asignatura con la misma descripción
         $asignaturaExistente = AsignaturaModel::where('descripcion', $request->descripcion)->first();
@@ -35,6 +33,7 @@ class AsignaturaController extends Controller
         // Crear una nueva asignatura si no existe
         $modelo = new AsignaturaModel();
         $modelo->descripcion = $request->descripcion;
+        $modelo->id_categoria = $request->id_categoria; // Añadir el ID de la categoría
         $modelo->ip_creacion = $request->ip();
         $modelo->ip_actualizacion = $request->ip();
         $modelo->id_usuario_creador = auth()->id() ?? 1;
@@ -58,6 +57,7 @@ class AsignaturaController extends Controller
         ], 500);
     }
 }
+
 
 
 
@@ -134,6 +134,7 @@ public function updateAsignatura(Request $request, $id)
         // Actualizar la asignatura
         $asignatura->update([
             "descripcion" => isset($request->descripcion) ? ucfirst(trim($request->descripcion)) : $asignatura->descripcion,
+            "id_categoria" => isset($request->categoria) ? $request->categoria : $asignatura->id_categoria, // Actualizar la categoría
             "id_usuario_actualizo" => auth()->id() ?? 1,
             "ip_actualizo" => $request->ip(),
             "estado" => isset($request->estado) ? $request->estado : "A"
@@ -157,23 +158,38 @@ public function updateAsignatura(Request $request, $id)
 }
 
 
-    public function showAsignatura()
-    {
-        try{
-            $asignatura = AsignaturaModel::select("id_materia","descripcion","fecha_creacion","estado","fecha_actualizacion")->whereIn("estado",["A","I"])->get();
-            return Response()->json([
-                "ok" => true,
-                "data" => $asignatura
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
+public function showAsignatura()
+{
+    try {
+        // Asegúrate de incluir la relación para obtener el nombre de la categoría
+        $asignaturas = AsignaturaModel::select(
+                "materias.id_materia",
+                "materias.descripcion",
+                "materias.fecha_creacion",
+                "materias.estado",
+                "materias.fecha_actualizacion",
+                "categorias.nombre as categoria_nombre" // Incluye el nombre de la categoría
+            )
+            ->join('categorias', 'materias.id_categoria', '=', 'categorias.id_categoria') // Asegúrate de que la relación esté bien definida
+            ->whereIn("materias.estado", ["A", "I"])
+            ->get();
 
-            return Response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ],500);
-        }
+        return response()->json([
+            "ok" => true,
+            "data" => $asignaturas
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Linea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
+
 }

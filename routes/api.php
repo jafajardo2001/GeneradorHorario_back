@@ -12,6 +12,7 @@ use App\Http\Controllers\ParaleloController;
 use App\Http\Controllers\PlanificacionAcademica;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\CategoriaController;
 use App\Http\Middleware\AutenticacionSistema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -44,7 +45,8 @@ Route::prefix('istg')->group(
         Route::post("create_asignatura/", [AsignaturaController::class, 'storeAsignatura']);
         Route::put("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
         Route::put("update_estado_asignatura/{id}", [AsignaturaController::class, 'updateEstadoAsignatura']);
-
+        //CATEGORIA
+        Route::get("show_categorias/", [CategoriaController::class, 'showCategorias']);
         //CARRERA
         Route::get("show_carrera/", [CarreraController::class, 'showCarrera']);
         Route::put("update_carrera/{id}", [CarreraController::class, 'updateCarrera']);
