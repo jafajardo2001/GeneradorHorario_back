@@ -6,6 +6,7 @@ use App\Http\Controllers\CarreraController;
 use App\Http\Controllers\InstitutoController;
 use App\Http\Controllers\TituloAcademicoController;
 use App\Http\Controllers\NivelController;
+use App\Http\Controllers\JobController;
 use App\Http\Controllers\DiasController;
 use App\Http\Controllers\DistribucionHorario;
 use App\Http\Controllers\ParaleloController;

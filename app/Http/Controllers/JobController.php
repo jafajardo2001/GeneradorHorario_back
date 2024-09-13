@@ -63,31 +63,31 @@ class JobController extends Controller
     }
 
     public function getJobs(Request $request)
-    {
-        try {
-            Log::info("Petición entrante " . __FILE__ . " -> " . __FUNCTION__ . " IP " . request_ip::ip());
+{
+    try {
+        Log::info("Petición entrante " . __FILE__ . " -> " . __FUNCTION__ . " IP " . request()->ip());
 
-            // Asegúrate de que los nombres de las tablas y campos coincidan con los reales en la base de datos
-            $job = JobModel::select("id_job", "descripcion", "estado", "usuarios.usuario as usuarios_ultima_gestion", "fecha_actualizacion")
-                ->whereIn("estado", ["A", "I"])
-                ->join('usuarios', 'id_usuario_actualizo', '=', 'usuarios.id_usuario') // Asegúrate de que estos nombres de campo son correctos
-                ->get();
+        // Realiza la consulta a la base de datos
+        $job = JobModel::select("job.id_job", "job.descripcion", "job.estado", "usuarios.usuario as usuarios_ultima_gestion", "job.fecha_actualizacion")
+            ->join('usuarios', 'job.id_usuario_actualizo', '=', 'usuarios.id_usuario') // Verifica los nombres
+            ->whereIn("job.estado", ["A", "I"])
+            ->get();
+            
+        Log::info("Datos obtenidos: " . json_encode($job));
 
-            // Registra la respuesta para depuración
-            Log::info("Datos obtenidos: " . $job);
-
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " -> " . __FUNCTION__ . " MENSAJE => " . $e->getMessage());
-            return response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
-        }
-
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " -> " . __FUNCTION__ . " MENSAJE => " . $e->getMessage());
         return response()->json([
-            "ok" => true,
-            "data" => $job,
-            "mensaje" => "Datos obtenidos exitosamente"
-        ], 200);
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+
+    return response()->json([
+        "ok" => true,
+        "data" => $job,
+        "mensaje" => "Datos obtenidos exitosamente"
+    ], 200);
+}
+
 }
