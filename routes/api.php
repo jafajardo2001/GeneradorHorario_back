@@ -73,6 +73,10 @@ Route::prefix('istg')->group(
         Route::put("delete_rol/{id}", [RolController::class, 'deleteRol']);
         Route::put("update_rol/{id}", [RolController::class, 'updateRol']);
 
+        // //Tiempo
+        Route::get("show_jobs/", [JobController::class, 'getJobs']);
+        Route::post("create_job/", [JobController::class, 'storeJob']);
+
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
