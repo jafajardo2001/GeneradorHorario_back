@@ -87,6 +87,7 @@ class UsuarioController extends Controller
             $modelo->usuario = $usuario;
             $modelo->clave = bcrypt($request->cedula);
             $modelo->id_rol = $request->id_rol;
+            $modelo->id_job = $request->id_job;
             $modelo->ip_creacion = $request->ip();
             $modelo->ip_actualizacion = $request->ip();
             $modelo->id_usuario_creador = auth()->id() ?? 1;
@@ -114,8 +115,10 @@ class UsuarioController extends Controller
     public function showUsuarios()
 {
     try {
+        // Almacena logs informativos
         $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
 
+        // Selecciona los datos requeridos
         $usuarios = UsuarioModel::select(
             "usuarios.id_usuario",
             "usuarios.cedula",
@@ -126,30 +129,40 @@ class UsuarioController extends Controller
             "usuarios.usuario",
             "usuarios.imagen_perfil",
             "rol.id_rol",
-            "rol.descripcion",
+            "rol.descripcion as rol_descripcion",  // Rol del usuario
+            "job.id_job",
+            "job.descripcion as job_descripcion",  // Descripción del job
+            "titulo_academico.id_titulo_academico",
+            "titulo_academico.descripcion as titulo_academico_descripcion",  // Descripción del título académico
             "usuarios.estado",
             UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")  // Nombre completo del creador
         )
         ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
-        ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
-        ->where("usuarios.estado", "A")  // Filtra por estado "A"
+        ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")  // Join para jobs
+        ->leftJoin("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")  // Join para título académico
+        ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")  // Join para obtener creador
+        ->where("usuarios.estado", "A")  // Filtra por estado activo
         ->get();
 
+        // Respuesta en JSON
         return Response()->json([
             "ok" => true,
             "data" => $usuarios
         ], 200);
     } catch (Exception $e) {
+        // Registro de logs de error
         log::error(__FILE__ . " > " . __FUNCTION__);
         log::error("Mensaje : " . $e->getMessage());
-        log::error("Linea : " . $e->getLine());
+        log::error("Línea : " . $e->getLine());
 
+        // Respuesta en caso de error
         return Response()->json([
             "ok" => false,
             "message" => "Error interno en el servidor"
         ], 500);
     }
 }
+
 
     public function showDocentes()
     {
@@ -178,6 +191,7 @@ class UsuarioController extends Controller
                 "titulo_academico.descripcion as titulo_academico"
             )
             ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+            
             ->where('id_rol', '=', $rolDocente->id_rol)
             ->where('usuarios.estado', '=', 'A')
             ->get();

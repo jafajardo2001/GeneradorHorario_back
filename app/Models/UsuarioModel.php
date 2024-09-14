@@ -24,11 +24,17 @@ class UsuarioModel extends Model
         'correo',
         'telefono',
         'id_rol',
+        'id_job',
         'id_titulo_academico'
 
     ];
     public function tituloAcademico()
     {
         return $this->belongsTo(TituloAcademicoModel::class, 'id_titulo_academico');
+        
     }
+    public function job()
+{
+    return $this->belongsTo(JobModel::class, 'id_job', 'id_job');
+}
 }

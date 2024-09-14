@@ -37,6 +37,9 @@ class DistribucionHorario extends Model
         return $this->belongsTo(AsignaturaModel::class,"id_materia","id_materia");
     }
 
-
+    public function job()
+{
+    return $this->belongsTo(JobModel::class, 'id_job', 'id_job');
+}
 
 }
