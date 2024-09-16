@@ -68,6 +68,7 @@ Route::prefix('istg')->group(
         Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
         Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
+        Route::post("auth_login/", [UsuarioController::class, 'login']);
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);
         Route::post("create_rol/", [RolController::class, 'storeRol']);
