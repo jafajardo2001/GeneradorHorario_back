@@ -17,89 +17,117 @@ class DistribucionHorario extends Controller
 
 
     public function storeHorario(Request $request)
-    {
-        $response = new TypeResponse();
-        try {
-            DB::beginTransaction();
-            $detalles = $request->input("data");
-            $idUsuario = $request->input("id_usuario"); 
-            $idPeriodoElectivo = 1;
-            $idEducacionGlobal = 1;
+{
+    $response = new TypeResponse();
+    try {
+        DB::beginTransaction();
+        $detalles = $request->input("data");
+        $idUsuario = $request->input("id_usuario"); 
+        $idPeriodoElectivo = 1;
+        $idEducacionGlobal = 1;
 
-            // Validación: Limitar 8 materias por día
-            $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+        // Obtener el tipo de trabajo del docente
+        $job = DB::table('usuarios')
+            ->join('job', 'usuarios.id_job', '=', 'job.id_job')
+            ->where('usuarios.id_usuario', $idUsuario)
+            ->select('job.descripcion as job_descripcion')
+            ->first();
+
+        if (!$job) {
+            throw new Exception("No se pudo determinar el tipo de trabajo del docente.");
+        }
+
+        // Definir los límites según el tipo de trabajo
+        $materiasPorDiaLimite = $job->job_descripcion === 'Tiempo Completo' ? 8 : 4;
+        $materiasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
+
+        // Validación: Limitar materias por día
+        $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+            ->where("id_periodo_academico", $idPeriodoElectivo)
+            ->where("id_educacion_global", $idEducacionGlobal)
+            ->where("dia", $detalles[0]['dia']) // Asumimos que todas las materias del array son para el mismo día
+            ->where("estado", "A")
+            ->count();
+
+        if ($materiasPorDia + count($detalles) > $materiasPorDiaLimite) {
+            throw new Exception("No se puede asignar más de {$materiasPorDiaLimite} materias para el día " . $detalles[0]['dia']);
+        }
+
+        // Validación: Limitar materias por semana
+        $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+            ->where("id_periodo_academico", $idPeriodoElectivo)
+            ->where("id_educacion_global", $idEducacionGlobal)
+            ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
+            ->where("estado", "A")
+            ->count();
+
+        if ($materiasPorSemana + count($detalles) > $materiasPorSemanaLimite) {
+            throw new Exception("No se puede asignar más de {$materiasPorSemanaLimite} materias por semana.");
+        }
+
+        $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal){
+            $values = (object)$values;
+
+            // Validar solapamiento de horarios
+            $consulta = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
                 ->where("id_periodo_academico", $idPeriodoElectivo)
                 ->where("id_educacion_global", $idEducacionGlobal)
-                ->where("dia", $detalles[0]['dia']) // Asumimos que todas las materias del array son para el mismo día
+                ->where("id_carrera", $values->id_carrera)
+                ->where("id_materia", $values->id_materia)
+                ->where("id_nivel", $values->id_curso)
+                ->where("id_paralelo", $values->id_paralelo)
+                ->where("dia", $values->dia)
+                ->where("hora_inicio", $values->hora_inicio)
+                ->where("hora_termina", $values->hora_termina)
                 ->where("estado", "A")
-                ->count();
+                ->get();
 
-            if ($materiasPorDia + count($detalles) > 8) {
-                throw new Exception("No se puede asignar más de 8 materias para el día " . $detalles[0]['dia']);
+            if ($consulta->count() > 0) {
+                throw new Exception("Ya existe una hora en el rango de " . $values->hora_inicio . " y " . $values->hora_termina);
             }
 
-            $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal){
-                $values = (object)$values;
-                
-                // Validar solapamiento de horarios
-                $consulta = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
-                    ->where("id_periodo_academico", $idPeriodoElectivo)
-                    ->where("id_educacion_global", $idEducacionGlobal)
-                    ->where("id_carrera", $values->id_carrera)
-                    ->where("id_materia", $values->id_materia)
-                    ->where("id_nivel", $values->id_curso)
-                    ->where("id_paralelo", $values->id_paralelo)
-                    ->where("dia", $values->dia)
-                    ->where("hora_inicio", $values->hora_inicio)
-                    ->where("hora_termina", $values->hora_termina)
-                    ->where("estado", "A")
-                    ->get();
+            return [
+                "id_usuario" => $idUsuario,
+                "id_periodo_academico" => $idPeriodoElectivo,
+                "id_educacion_global" => $idEducacionGlobal,
+                "id_carrera" => $values->id_carrera,
+                "id_materia" => $values->id_materia,
+                "id_nivel" => $values->id_curso,
+                "id_paralelo" => $values->id_paralelo,
+                "dia" => $values->dia,
+                "hora_inicio" => $values->hora_inicio,
+                "hora_termina" => $values->hora_termina,
+                "ip_creacion" => $request->ip(),
+                "ip_actualizacion"=> $request->ip(),
+                "id_usuario_creador" => $idUsuario,
+                "id_usuario_actualizo" => $idUsuario,
+                "fecha_creacion" => now(),
+                "fecha_actualizacion" => now(),
+                "estado" => 'A'
+            ];
+        });
 
-                if ($consulta->count() > 0) {
-                    throw new Exception("Ya existe una hora en el rango de " . $values->hora_inicio . " y " . $values->hora_termina);
-                }
-
-                return [
-                    "id_usuario" => $idUsuario,
-                    "id_periodo_academico" => $idPeriodoElectivo,
-                    "id_educacion_global" => $idEducacionGlobal,
-                    "id_carrera" => $values->id_carrera,
-                    "id_materia" => $values->id_materia,
-                    "id_nivel" => $values->id_curso,
-                    "id_paralelo" => $values->id_paralelo,
-                    "dia" => $values->dia,
-                    "hora_inicio" => $values->hora_inicio,
-                    "hora_termina" => $values->hora_termina,
-                    "ip_creacion" => $request->ip(),
-                    "ip_actualizacion"=> $request->ip(),
-                    "id_usuario_creador" => $idUsuario,
-                    "id_usuario_actualizo" => $idUsuario,
-                    "fecha_creacion" => now(),
-                    "fecha_actualizacion" => now(),
-                    "estado" => 'A'
-                ];
-            });
-
-            ModelsDistribucionHorario::insert(array_values($insert_data->toArray()));
-            DB::commit();
-            return Response()->json([
-                "ok"=>true,
-                "mensaje"=> "Horario creado con éxito."
-            ]);
-        } catch(Exception $e) {
-            DB::rollBack();
-            log::alert("Ha ocurrido un error");
-            log::alert("Mensaje => " . $e->getMessage());
-            log::alert("Línea => " . $e->getLine());
-            $response->setok(false);
-            $response->setmensagge($e->getMessage());
-            return Response()->json([
-                "ok" => false,
-                "informacion" => "",
-                "mensaje_error" => $e->getMessage()
-            ]);
-        }
+        ModelsDistribucionHorario::insert(array_values($insert_data->toArray()));
+        DB::commit();
+        return response()->json([
+            "ok"=>true,
+            "mensaje"=> "Horario creado con éxito."
+        ]);
+    } catch(Exception $e) {
+        DB::rollBack();
+        Log::alert("Ha ocurrido un error");
+        Log::alert("Mensaje => " . $e->getMessage());
+        Log::alert("Línea => " . $e->getLine());
+        $response->setok(false);
+        $response->setmensagge($e->getMessage());
+        return response()->json([
+            "ok" => false,
+            "informacion" => "",
+            "mensaje_error" => $e->getMessage()
+        ]);
     }
+}
+
 
 
     public function showDistribucion(Request $request)
