@@ -165,7 +165,7 @@ class DistribucionHorario extends Controller
             "educacion_global.nombre as educacion_global_nombre",
             "carreras.nombre as nombre_carrera",
             "materias.descripcion as materia",
-            "nivel.termino as nivel",
+            "nivel.nemonico as nivel",
             "id_distribucion as id_distribucion",
             "paralelo.paralelo",
             "distribuciones_horario_academica.dia",
