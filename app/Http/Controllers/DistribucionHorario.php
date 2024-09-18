@@ -38,34 +38,59 @@ class DistribucionHorario extends Controller
         }
 
         // Definir los límites según el tipo de trabajo
-        $materiasPorDiaLimite = $job->job_descripcion === 'Tiempo Completo' ? 8 : 4;
-        $materiasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
+        $horasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
+        $horasPorDiaLimite = $job->job_descripcion === 'Tiempo Completo' ? 8 : 4;
 
-        // Validación: Limitar materias por día
-        $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
-            ->where("id_periodo_academico", $idPeriodoElectivo)
-            ->where("id_educacion_global", $idEducacionGlobal)
-            ->where("dia", $detalles[0]['dia']) // Asumimos que todas las materias del array son para el mismo día
-            ->where("estado", "A")
-            ->count();
-
-        if ($materiasPorDia + count($detalles) > $materiasPorDiaLimite) {
-            throw new Exception("No se puede asignar más de {$materiasPorDiaLimite} materias para el día " . $detalles[0]['dia']);
-        }
-
-        // Validación: Limitar materias por semana
-        $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+        // Validación: Limitar horas por semana
+        $horasExistentesPorSemana = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
             ->where("id_periodo_academico", $idPeriodoElectivo)
             ->where("id_educacion_global", $idEducacionGlobal)
             ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
             ->where("estado", "A")
-            ->count();
+            ->get()
+            ->sum(function($materia) {
+                return strtotime($materia->hora_termina) - strtotime($materia->hora_inicio); // Sumar las horas de cada materia
+            });
 
-        if ($materiasPorSemana + count($detalles) > $materiasPorSemanaLimite) {
-            throw new Exception("No se puede asignar más de {$materiasPorSemanaLimite} materias por semana.");
+        // Calcular horas a ingresar en la semana
+        $horasAIngresarPorSemana = collect($detalles)->sum(function ($values) {
+            return strtotime($values['hora_termina']) - strtotime($values['hora_inicio']);
+        });
+
+        // Convertir de segundos a horas
+        $horasExistentesPorSemana = $horasExistentesPorSemana / 3600;
+        $horasAIngresarPorSemana = $horasAIngresarPorSemana / 3600;
+
+        if ($horasExistentesPorSemana + $horasAIngresarPorSemana > $horasPorSemanaLimite) {
+            throw new Exception("No se puede asignar más de {$horasPorSemanaLimite} horas por semana.");
         }
 
-        $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal){
+        // Validación: Limitar horas por día
+        $materiasPorDia = collect($detalles)->groupBy('dia')->map(function($materiasDelDia, $dia) use ($idUsuario, $idPeriodoElectivo, $idEducacionGlobal, $horasPorDiaLimite) {
+            $horasExistentesPorDia = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
+                ->where("id_periodo_academico", $idPeriodoElectivo)
+                ->where("id_educacion_global", $idEducacionGlobal)
+                ->where("dia", $dia)
+                ->where("estado", "A")
+                ->get()
+                ->sum(function($materia) {
+                    return strtotime($materia->hora_termina) - strtotime($materia->hora_inicio);
+                });
+
+            $horasAIngresarPorDia = collect($materiasDelDia)->sum(function ($values) {
+                return strtotime($values['hora_termina']) - strtotime($values['hora_inicio']);
+            });
+
+            $horasExistentesPorDia = $horasExistentesPorDia / 3600;
+            $horasAIngresarPorDia = $horasAIngresarPorDia / 3600;
+
+            if ($horasExistentesPorDia + $horasAIngresarPorDia > $horasPorDiaLimite) {
+                throw new Exception("No se puede asignar más de {$horasPorDiaLimite} horas para el día " . $dia);
+            }
+        });
+
+        // Proceso de inserción
+        $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal) {
             $values = (object)$values;
 
             // Validar solapamiento de horarios
@@ -98,7 +123,7 @@ class DistribucionHorario extends Controller
                 "hora_inicio" => $values->hora_inicio,
                 "hora_termina" => $values->hora_termina,
                 "ip_creacion" => $request->ip(),
-                "ip_actualizacion"=> $request->ip(),
+                "ip_actualizacion" => $request->ip(),
                 "id_usuario_creador" => $idUsuario,
                 "id_usuario_actualizo" => $idUsuario,
                 "fecha_creacion" => now(),
@@ -110,10 +135,10 @@ class DistribucionHorario extends Controller
         ModelsDistribucionHorario::insert(array_values($insert_data->toArray()));
         DB::commit();
         return response()->json([
-            "ok"=>true,
-            "mensaje"=> "Horario creado con éxito."
+            "ok" => true,
+            "mensaje" => "Horario creado con éxito."
         ]);
-    } catch(Exception $e) {
+    } catch (Exception $e) {
         DB::rollBack();
         Log::alert("Ha ocurrido un error");
         Log::alert("Mensaje => " . $e->getMessage());
@@ -127,6 +152,9 @@ class DistribucionHorario extends Controller
         ]);
     }
 }
+
+
+
 
 
 
@@ -215,24 +243,63 @@ class DistribucionHorario extends Controller
                 'estado'
             ]);
 
-            // Validar que los datos no se dupliquen
+            // Obtener el tipo de trabajo del docente
+            $job = DB::table('usuarios')
+                ->join('job', 'usuarios.id_job', '=', 'job.id_job')
+                ->where('usuarios.id_usuario', $data['id_usuario'] ?? $distribucion->id_usuario)
+                ->select('job.descripcion as job_descripcion')
+                ->first();
+
+            if (!$job) {
+                return response()->json([
+                    "ok" => false,
+                    "mensaje" => "No se pudo determinar el tipo de trabajo del docente."
+                ], 400);
+            }
+
+            // Definir los límites según el tipo de trabajo
+            $materiasPorDiaLimite = $job->job_descripcion === 'Tiempo Completo' ? 8 : 4;
+            $materiasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
+
+            // Validar límite diario de materias
+            $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $data['id_usuario'] ?? $distribucion->id_usuario)
+                ->where("dia", $data['dia'] ?? $distribucion->dia)
+                ->where("estado", "A")
+                ->count();
+
+            if ($materiasPorDia >= $materiasPorDiaLimite) {
+                return response()->json([
+                    "ok" => false,
+                    "mensaje" => "El día " . ($data['dia'] ?? $distribucion->dia) . " ya tiene el límite de {$materiasPorDiaLimite} materias para un docente de " . $job->job_descripcion
+                ], 400);
+            }
+
+            // Validar límite semanal de materias
+            $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $data['id_usuario'] ?? $distribucion->id_usuario)
+                ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
+                ->where("estado", "A")
+                ->count();
+
+            if ($materiasPorSemana >= $materiasPorSemanaLimite) {
+                return response()->json([
+                    "ok" => false,
+                    "mensaje" => "Ya se alcanzó el límite de {$materiasPorSemanaLimite} materias para la semana de un docente de " . $job->job_descripcion
+                ], 400);
+            }
+
+            // Validar solapamiento de horarios
             $exists = ModelsDistribucionHorario::where("id_usuario", $data['id_usuario'] ?? $distribucion->id_usuario)
-                ->where("id_periodo_academico", $data['id_periodo_academico'] ?? $distribucion->id_periodo_academico)
-                ->where("id_educacion_global", $data['id_educacion_global'] ?? $distribucion->id_educacion_global)
-                ->where("id_materia", $data['id_materia'] ?? $distribucion->id_materia)
-                ->where("id_nivel", $data['id_nivel'] ?? $distribucion->id_nivel)
-                ->where("id_paralelo", $data['id_paralelo'] ?? $distribucion->id_paralelo)
                 ->where("dia", $data['dia'] ?? $distribucion->dia)
                 ->where("hora_inicio", $data['hora_inicio'] ?? $distribucion->hora_inicio)
                 ->where("hora_termina", $data['hora_termina'] ?? $distribucion->hora_termina)
-                ->where("estado", $data['estado'] ?? $distribucion->estado)
-                ->where("id_distribucion", "<>", $id) // Usa el nombre correcto de la columna
+                ->where("estado", "A")
+                ->where("id_distribucion", "<>", $id)
                 ->exists();
 
             if ($exists) {
                 return response()->json([
                     "ok" => false,
-                    "mensaje" => "Ya existe una distribución con los mismos parámetros."
+                    "mensaje" => "Ya existe una distribución con el mismo horario para el día " . ($data['dia'] ?? $distribucion->dia) . "."
                 ], 400);
             }
 
@@ -247,8 +314,8 @@ class DistribucionHorario extends Controller
                 "dia" => $data['dia'] ?? $distribucion->dia,
                 "hora_inicio" => $data['hora_inicio'] ?? $distribucion->hora_inicio,
                 "hora_termina" => $data['hora_termina'] ?? $distribucion->hora_termina,
-                "fecha_actualizacion" => Carbon::now(),
-                "id_usuario_actualizo" => auth()->id() ?? 1, // Valor predeterminado
+                "fecha_actualizacion" => now(),
+                "id_usuario_actualizo" => auth()->id() ?? 1,
                 "ip_actualizo" => $request->ip(),
                 "estado" => $data['estado'] ?? $distribucion->estado
             ]);
@@ -259,17 +326,15 @@ class DistribucionHorario extends Controller
             ], 200);
 
         } catch (Exception $e) {
-            // Registro de errores
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje: " . $e->getMessage());
-            Log::error("Línea: " . $e->getLine());
-
+            Log::error("Error: " . $e->getMessage() . " en la línea " . $e->getLine());
             return response()->json([
                 "ok" => false,
-                "mensaje" => "Error interno en el servidor."
+                "mensaje" => "Error interno en el servidor: " . $e->getMessage()
             ], 500);
         }
     }
+
+
 
 
 
