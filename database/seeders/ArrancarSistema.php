@@ -55,16 +55,17 @@ class ArrancarSistema extends Seeder
         ]);
         if(RolModel::find(1)){
             UsuarioModel::create([
-                "cedula" => "#########",
+                "cedula" => "0987654321",
                 "nombres" => "Admin Admin",
                 "apellidos" => "Administrador Administrador",
-                "correo" =>"admin@est.istg.edu.ec",
+                "correo" =>"admin@admin.com",
                 "telefono" => "0987654321",
                 "usuario" => "Admin",
                 "clave" => bcrypt("_Admin#2023*"),
                 "id_rol" => 1,
                 "id_titulo_academico" => 1,
                 "id_job" =>1,
+                "id_carrera" => 1,
                 "ip_creacion" => "127.0.0.1",
                 "ip_actualizacion" => "127.0.0.1",
                 "id_usuario_creador" => 1,

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\CarreraModel;
 use App\Models\RolModel;
 use App\Models\TituloAcademicoModel;
 use App\Models\UsuarioModel;
@@ -78,6 +79,14 @@ class UsuarioController extends Controller
                 ], 400);
             }
 
+            $modelo_carrera = CarreraModel::find($request->id_carrera);
+            if (!$modelo_carrera) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Está carrera no existe con el id $request->id_carrera"
+                ], 400);
+            }
+
             $modelo->id_titulo_academico = $request->id_titulo_academico;
             $modelo->cedula = $request->cedula;
             $modelo->nombres = $nombres;
@@ -88,6 +97,7 @@ class UsuarioController extends Controller
             $modelo->clave = bcrypt($request->cedula);
             $modelo->id_rol = $request->id_rol;
             $modelo->id_job = $request->id_job;
+            $modelo->id_carrera = $request->id_carrera;
             $modelo->ip_creacion = $request->ip();
             $modelo->ip_actualizacion = $request->ip();
             $modelo->id_usuario_creador = auth()->id() ?? 1;
@@ -134,12 +144,15 @@ class UsuarioController extends Controller
                 "job.descripcion as job_descripcion",  // Descripción del job
                 "titulo_academico.id_titulo_academico",
                 "titulo_academico.descripcion as titulo_academico_descripcion",  // Descripción del título académico
+                "carreras.id_carrera",
+                "carreras.nombre as carrera_nombre",  // Descripción de la carrera
                 "usuarios.estado",
                 UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")  // Nombre completo del creador
             )
             ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
             ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")  // Join para jobs
             ->leftJoin("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")  // Join para título académico
+            ->leftJoin("carreras", "usuarios.id_carrera", "=", "carreras.id_carrera")  // Join para carrera
             ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")  // Join para obtener creador
             ->where("usuarios.estado", "A")  // Filtra por estado activo
             ->get();
@@ -188,9 +201,11 @@ class UsuarioController extends Controller
                 "correo",  // Agregar correo
                 "telefono",  // Agregar teléfono
                 UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo"),
-                "titulo_academico.descripcion as titulo_academico"
+                "titulo_academico.descripcion as titulo_academico", // Título académico
+                "carreras.nombre as carrera" // Carrera
             )
             ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+            ->leftjoin('carreras', 'usuarios.id_carrera', '=', 'carreras.id_carrera')
             
             ->where('id_rol', '=', $rolDocente->id_rol)
             ->where('usuarios.estado', '=', 'A')
@@ -219,9 +234,11 @@ class UsuarioController extends Controller
             "usuarios.apellidos",
             "usuarios.cedula",
             UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
-            "titulo_academico.descripcion as titulo_academico"
+            "titulo_academico.descripcion as titulo_academico",
+            'carreras.nombre as carrera'
         )
         ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+        ->leftjoin('carreras', 'usuarios.id_carrera', '=', 'carreras.id_carrera')
         ->where('usuarios.id_rol', '=', $rolDocente->id_rol)
         ->where('usuarios.estado', '=', 'A')
         ->get();
