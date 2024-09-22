@@ -24,7 +24,6 @@ return new class extends Migration
             $table->unsignedBigInteger('id_rol');
             $table->unsignedBigInteger('id_job');
             $table->unsignedBigInteger('id_titulo_academico');
-            $table->unsignedBigInteger('id_carrera');
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);
             $table->integer('id_usuario_creador');

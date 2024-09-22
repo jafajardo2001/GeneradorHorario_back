@@ -21,12 +21,13 @@ class UsuarioModel extends Model
         'cedula',
         'nombres',
         'apellidos',
+        
         'correo',
         'telefono',
         'id_rol',
         'id_job',
-        'id_titulo_academico',
-        'id_carrera'
+        'id_titulo_academico'
+        
 
     ];
     public function tituloAcademico()
@@ -41,5 +42,9 @@ class UsuarioModel extends Model
     public function carrera()
     {
         return $this->belongsTo(CarreraModel::class, 'id_carrera', 'id_carrera');
+    }
+        public function carreras()
+    {
+        return $this->belongsToMany(CarreraModel::class, 'usuario_carrera', 'id_usuario', 'id_carrera');
     }
 }
