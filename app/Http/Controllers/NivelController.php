@@ -13,30 +13,23 @@ class NivelController extends Controller
     public function storeNivelCarrera(Request $request)
     {
         try{
-            $modelo = new NivelModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+            // Validar que el campo 'descripcion' esté presente
         
-            if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
+            $modelo = new NivelModel();
+            
+
+             // Verificar si ya existe un nivel con el mismo número, nemonico y termino
+                $nivelExistente = NivelModel::where('numero', $request->numero)
+                ->where('nemonico', $request->nemonico)
+                ->where('termino', $request->termino)
+                ->first();
+
+                if ($nivelExistente) {
                 return response()->json([
                     "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
+                    "msg_error" => "El nivel ya existe con el número " . $request->numero . ", nemonico " . $request->nemonico . " y termino " . $request->termino
                 ], 400);
-            }
-
-             // Validar si el nivel ya existe
-             $nivelExistente = NivelModel::where('numero', $request->numero)
-             ->where('nemonico', $request->nemonico)
-             ->where('termino', $request->termino)
-             ->first();
-
-            if ($nivelExistente) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "El nivel ya existe"
-                ], 400);
-            }
+                }
             
             $modelo->numero = $request->numero;
             $modelo->nemonico = $request->nemonico;
@@ -100,11 +93,11 @@ class NivelController extends Controller
                 ], 400);    
             }
             
-            NivelModel::find($id)->updated([
+            NivelModel::find($id)->update([
                 "estado" => "E",
                 "id_usuario_actualizo" => auth()->id() ?? 1,
                 "ip_actualizo" => $request->ip(),
-
+                "fecha_actualizacion" => now(),
             ]);
 
             return Response()->json([

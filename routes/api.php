@@ -6,6 +6,7 @@ use App\Http\Controllers\CarreraController;
 use App\Http\Controllers\InstitutoController;
 use App\Http\Controllers\TituloAcademicoController;
 use App\Http\Controllers\NivelController;
+use App\Http\Controllers\JobController;
 use App\Http\Controllers\DiasController;
 use App\Http\Controllers\DistribucionHorario;
 use App\Http\Controllers\ParaleloController;
@@ -54,24 +55,31 @@ Route::prefix('istg')->group(
         Route::get("show_nivel/", [NivelController::class, 'showNivel']);
         Route::put("update_nivel/{id}", [NivelController::class, 'updateNivel']);
         Route::post("create_nivel/", [NivelController::class, 'storeNivelCarrera']);
-        Route::delete("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
+        Route::put("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
         //PARALELO
         Route::get("showParalelo/", [ParaleloController::class, 'showParalelo']);
         Route::put("update_paralelo/{id}", [ParaleloController::class, 'updateParalelo']);
         Route::post("create_paralelo/", [ParaleloController::class, 'storeParalelo']);
-        Route::delete("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
+        Route::put("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
         Route::get("usuario/{id}", [UsuarioController::class, 'show']);
         Route::put("update_usuario/{id}", [UsuarioController::class, 'updateUsuario']);
         Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
         Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
+        Route::get("obtener_docentes_por_carrera/{idCarrera}", [UsuarioController::class, 'obtenerDocentesPorCarrera']);
+
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
+        Route::post("auth_login/", [UsuarioController::class, 'login']);
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);
         Route::post("create_rol/", [RolController::class, 'storeRol']);
         Route::put("delete_rol/{id}", [RolController::class, 'deleteRol']);
         Route::put("update_rol/{id}", [RolController::class, 'updateRol']);
+
+        // //Tiempo
+        Route::get("show_jobs/", [JobController::class, 'getJobs']);
+        Route::post("create_job/", [JobController::class, 'storeJob']);
 
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);

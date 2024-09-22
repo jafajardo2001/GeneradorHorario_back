@@ -11,6 +11,7 @@ use App\Models\EducacionGlobal;
 use App\Models\InstitutoModel;
 use App\Models\PeriodoElectivoModel;
 use App\Models\RolModel;
+use App\Models\JobModel;
 use App\Models\UsuarioModel;
 use App\Models\TituloAcademicoModel;
 use Carbon\CarbonConverterInterface;
@@ -42,17 +43,28 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
+        JobModel::insert([
+            "descripcion" => "Tiempo Completo",
+            "ip_creacion" => "127.0.0.1",
+            "ip_actualizacion" => "127.0.0.1",
+            "id_usuario_creador" => 1,
+            "id_usuario_actualizo" => 1,
+            "fecha_creacion" => Carbon::now(),
+            "fecha_actualizacion" => Carbon::now(),
+            "estado" => "A"
+        ]);
         if(RolModel::find(1)){
             UsuarioModel::create([
-                "cedula" => "#########",
+                "cedula" => "0987654321",
                 "nombres" => "Admin Admin",
                 "apellidos" => "Administrador Administrador",
-                "correo" =>"admin@est.istg.edu.ec",
+                "correo" =>"admin@admin.com",
                 "telefono" => "0987654321",
                 "usuario" => "Admin",
                 "clave" => bcrypt("_Admin#2023*"),
                 "id_rol" => 1,
                 "id_titulo_academico" => 1,
+                "id_job" =>1,
                 "ip_creacion" => "127.0.0.1",
                 "ip_actualizacion" => "127.0.0.1",
                 "id_usuario_creador" => 1,
