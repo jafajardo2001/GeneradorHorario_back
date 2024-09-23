@@ -15,6 +15,18 @@ class CarreraController extends Controller
     public function storeCarrera(Request $request)
     {
         try{
+
+            // Verificar si la carrera ya existe
+            $carreraExistente = CarreraModel::where('nombre', ucfirst(trim($request->nombre)))
+                ->where('estado', 'A')
+                ->first();
+
+            if ($carreraExistente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "La carrera ya existe.",
+                ], 400);
+            }
             
             $modelo = new CarreraModel();
             $campos_requeridos = $modelo->getFillable();
@@ -90,12 +102,15 @@ class CarreraController extends Controller
     public function updateCarrera(Request $request,$id)
     {
         try{
-            $asignatura = CarreraModel::find($id);
-            if(!$asignatura){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El registro no existe con el id $id"
-                ],400);
+            // Buscar la carrera por su ID
+            $carrera = CarreraModel::find($id);
+
+            // Verificar si la carrera existe
+            if (!$carrera) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "La carrera no existe.",
+                ], 404);
             }
             CarreraModel::find($id)->update([
                 "nombre" => isset($request->nombre)?$request->nombre:$asignatura->nombre,
