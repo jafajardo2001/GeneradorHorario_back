@@ -68,8 +68,8 @@ Route::prefix('istg')->group(
         Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
         Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
         Route::get("obtener_docentes_por_carrera/{idCarrera}", [UsuarioController::class, 'obtenerDocentesPorCarrera']);
-
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
+        //Auth-LoginxUsuario
         Route::post("auth_login/", [UsuarioController::class, 'login']);
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);

@@ -120,114 +120,114 @@ class UsuarioController extends Controller
 
     // Ejemplo de endpoint en Laravel
     public function obtenerDocentesPorCarrera($idCarrera)
-{
-    try {
-        // Obtener el ID del rol "Docente"
-        $rolDocente = RolModel::select('id_rol')
-            ->where('descripcion', '=', 'Docente')
-            ->first();
+    {
+        try {
+            // Obtener el ID del rol "Docente"
+            $rolDocente = RolModel::select('id_rol')
+                ->where('descripcion', '=', 'Docente')
+                ->first();
 
-        if (!$rolDocente) {
+            if (!$rolDocente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Rol Docente no encontrado"
+                ], 404);
+            }
+
+            // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
+            $docentes = UsuarioModel::select(
+                "usuarios.id_usuario",
+                "usuarios.nombres",
+                "usuarios.apellidos",
+                "usuarios.cedula",
+                "usuarios.correo",  // Agregar correo
+                "usuarios.telefono",  // Agregar teléfono
+                UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
+                "titulo_academico.descripcion as titulo_academico" // Título académico
+            )
+            ->join('usuario_carrera', 'usuarios.id_usuario', '=', 'usuario_carrera.id_usuario')  // Unir con la tabla de usuario_carrera
+            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
+            ->where('usuario_carrera.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
+            ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
+            ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
+            ->get();
+
+            // Validar si no se encontraron docentes
+            if ($docentes->isEmpty()) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "No se encontraron docentes para esta carrera"
+                ], 404);
+            }
+
+            // Retornar los docentes en formato JSON
+            return response()->json([
+                "ok" => true,
+                "data" => $docentes
+            ], 200);
+
+        } catch (\Exception $e) {
+            // Manejo de errores
             return response()->json([
                 "ok" => false,
-                "message" => "Rol Docente no encontrado"
-            ], 404);
+                "message" => "Error en el servidor"
+            ], 500);
         }
-
-        // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
-        $docentes = UsuarioModel::select(
-            "usuarios.id_usuario",
-            "usuarios.nombres",
-            "usuarios.apellidos",
-            "usuarios.cedula",
-            "usuarios.correo",  // Agregar correo
-            "usuarios.telefono",  // Agregar teléfono
-            UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
-            "titulo_academico.descripcion as titulo_academico" // Título académico
-        )
-        ->join('usuario_carrera', 'usuarios.id_usuario', '=', 'usuario_carrera.id_usuario')  // Unir con la tabla de usuario_carrera
-        ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
-        ->where('usuario_carrera.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
-        ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
-        ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
-        ->get();
-
-        // Validar si no se encontraron docentes
-        if ($docentes->isEmpty()) {
-            return response()->json([
-                "ok" => false,
-                "message" => "No se encontraron docentes para esta carrera"
-            ], 404);
-        }
-
-        // Retornar los docentes en formato JSON
-        return response()->json([
-            "ok" => true,
-            "data" => $docentes
-        ], 200);
-
-    } catch (\Exception $e) {
-        // Manejo de errores
-        return response()->json([
-            "ok" => false,
-            "message" => "Error en el servidor"
-        ], 500);
     }
-}
 
     
 
 
 
-public function showUsuarios()
-{
-    try {
-        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+    public function showUsuarios()
+    {
+        try {
+            $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
 
-        // Selecciona los datos requeridos, incluyendo las carreras asociadas al usuario
-        $usuarios = UsuarioModel::select(
-            "usuarios.id_usuario",
-            "usuarios.cedula",
-            "usuarios.nombres",
-            "usuarios.apellidos",
-            "usuarios.correo",
-            "usuarios.telefono",
-            "usuarios.usuario",
-            "usuarios.imagen_perfil",
-            "rol.id_rol",
-            "rol.descripcion as rol_descripcion",
-            "job.id_job",
-            "job.descripcion as job_descripcion",
-            "titulo_academico.id_titulo_academico",
-            "titulo_academico.descripcion as titulo_academico_descripcion",
-            "usuarios.estado",
-            UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")
-        )
-        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
-        ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")
-        ->leftJoin("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
-        ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
-        ->where("usuarios.estado", "A")
-        ->with(['carreras' => function ($query) {
-            $query->select('carreras.id_carrera', 'carreras.nombre');  // Obtener los campos necesarios de las carreras
-        }])
-        ->get();
+            // Selecciona los datos requeridos, incluyendo las carreras asociadas al usuario
+            $usuarios = UsuarioModel::select(
+                "usuarios.id_usuario",
+                "usuarios.cedula",
+                "usuarios.nombres",
+                "usuarios.apellidos",
+                "usuarios.correo",
+                "usuarios.telefono",
+                "usuarios.usuario",
+                "usuarios.imagen_perfil",
+                "rol.id_rol",
+                "rol.descripcion as rol_descripcion",
+                "job.id_job",
+                "job.descripcion as job_descripcion",
+                "titulo_academico.id_titulo_academico",
+                "titulo_academico.descripcion as titulo_academico_descripcion",
+                "usuarios.estado",
+                UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")
+            )
+            ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
+            ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")
+            ->leftJoin("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
+            ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
+            ->where("usuarios.estado", "A")
+            ->with(['carreras' => function ($query) {
+                $query->select('carreras.id_carrera', 'carreras.nombre');  // Obtener los campos necesarios de las carreras
+            }])
+            ->get();
 
-        return response()->json([
-            "ok" => true,
-            "data" => $usuarios
-        ], 200);
-    } catch (Exception $e) {
-        log::error(__FILE__ . " > " . __FUNCTION__);
-        log::error("Mensaje : " . $e->getMessage());
-        log::error("Línea : " . $e->getLine());
+            return response()->json([
+                "ok" => true,
+                "data" => $usuarios
+            ], 200);
+        } catch (Exception $e) {
+            log::error(__FILE__ . " > " . __FUNCTION__);
+            log::error("Mensaje : " . $e->getMessage());
+            log::error("Línea : " . $e->getLine());
 
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
+            return response()->json([
+                "ok" => false,
+                "message" => "Error interno en el servidor"
+            ], 500);
+        }
     }
-}
 
 
 
@@ -344,6 +344,8 @@ public function showUsuarios()
             ], 500);
         }
     }
+
+
     public function updateUsuario(Request $request, $id)
     {
         try {
@@ -352,24 +354,42 @@ public function showUsuarios()
                 'cedula' => 'required|string|max:10',
                 'nombres' => 'required|string|max:255',
                 'apellidos' => 'required|string|max:255',
-                'perfil' => 'required|integer',
+                'correo' => 'required|email',
+                'telefono' => 'required|string|max:15',
+                'id_titulo_academico' => 'nullable|array', // Puede ser uno o más títulos académicos
+                'id_carreras' => 'nullable|array',  // Puede ser una o más carreras
+                'id_rol' => 'required|integer',
             ]);
 
             // Buscar el usuario por ID
             $usuario = UsuarioModel::findOrFail($id);
 
-            // Generar el nuevo valor para el campo 'usuario'
-            $usuarioStr = strtolower(substr($validatedData['nombres'], 0, 1) . substr($validatedData['apellidos'], 0, 1));
-
-            // Actualizar los campos permitidos
+            // Actualizar los campos básicos del usuario
             $usuario->cedula = $validatedData['cedula'];
-            $usuario->nombres = $validatedData['nombres'];
-            $usuario->apellidos = $validatedData['apellidos'];
-            $usuario->perfil = $validatedData['perfil'];
-            $usuario->usuario = $usuarioStr;
+            $usuario->nombres = ucfirst(trim($validatedData['nombres']));
+            $usuario->apellidos = ucfirst(trim($validatedData['apellidos']));
+            $usuario->correo = $validatedData['correo'];
+            $usuario->telefono = $validatedData['telefono'];
+            $usuario->id_rol = $validatedData['id_rol'];
+            $usuario->ip_actualizacion = $request->ip();
+            $usuario->id_usuario_actualizo = auth()->id() ?? 1;
 
-            // Guardar los cambios
+            // Actualizar el campo 'usuario' (nombre de usuario)
+            $usuario->usuario = strtolower(substr($validatedData['nombres'], 0, 1) . substr($validatedData['apellidos'], 0, 1));
+
+            // Guardar los cambios en el usuario
             $usuario->save();
+
+            // Asignar carreras, si se proporcionaron
+            if (!empty($validatedData['id_carreras'])) {
+                $usuario->carreras()->sync($validatedData['id_carreras']); // Actualiza carreras, eliminando las anteriores si es necesario
+            }
+
+            // Asignar títulos académicos, si se proporcionaron (puede ser más de uno)
+            if (!empty($validatedData['id_titulo_academico'])) {
+                // Si tienes una tabla de relación entre usuarios y títulos académicos, usa sync para agregar/actualizar títulos
+                $usuario->titulosAcademicos()->sync($validatedData['id_titulo_academico']);
+            }
 
             return response()->json([
                 'ok' => true,
@@ -441,45 +461,4 @@ public function showUsuarios()
         }
     }
 
-
-
-/*public function show($id)
-{
-    try {
-        $usuario = UsuarioModel::select(
-            "id_usuario",
-            "cedula",
-            "nombres",
-            "apellidos",
-            "usuario",
-            "imagen_perfil",
-            "rol.id_rol",
-            "rol.descripcion",
-            "usuarios.estado",
-            UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")
-        )
-        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
-        ->join("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
-        ->where("usuarios.id_usuario", $id)
-        ->first();
-
-        if (!$usuario) {
-            return response()->json([
-                "ok" => false,
-                "message" => "Usuario no encontrado"
-            ], 404);
-        }
-
-        return response()->json([
-            "ok" => true,
-            "data" => $usuario
-        ], 200);
-    } catch (Exception $e) {
-        Log::error("Error en show: " . $e->getMessage());
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
-    }
-}*/
 }
