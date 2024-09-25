@@ -12,6 +12,9 @@ use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
+use Illuminate\Support\Facades\Validator;
+use App\Http\Controllers\ModelNotFoundException;
+
 class UsuarioController extends Controller
 {
     private $servicio_informe;
@@ -499,75 +502,151 @@ class UsuarioController extends Controller
     }
 
 
-    public function updateUsuario(Request $request, $id)
-    {
-        try {
-            // Validar los datos entrantes
-            $validatedData = $request->validate([
-                'cedula' => 'required|string|max:10',
-                'nombres' => 'required|string|max:255',
-                'apellidos' => 'required|string|max:255',
-                'correo' => 'required|email',
-                'telefono' => 'required|string|max:15',
-                'id_titulo_academico' => 'nullable|array', // Puede ser uno o más títulos académicos
-                'id_carreras' => 'nullable|array',  // Puede ser una o más carreras
-                'id_rol' => 'required|integer',
-            ]);
+    public function updateUsuarios(Request $request, $id)
+{
+    try {
+        Log::info('Iniciando actualización de usuario.');
 
-            // Buscar el usuario por ID
-            $usuario = UsuarioModel::findOrFail($id);
+        
 
-            // Actualizar los campos básicos del usuario
-            $usuario->cedula = $validatedData['cedula'];
-            $usuario->nombres = ucfirst(trim($validatedData['nombres']));
-            $usuario->apellidos = ucfirst(trim($validatedData['apellidos']));
-            $usuario->correo = $validatedData['correo'];
-            $usuario->telefono = $validatedData['telefono'];
-            $usuario->id_rol = $validatedData['id_rol'];
-            $usuario->ip_actualizacion = $request->ip();
-            $usuario->id_usuario_actualizo = auth()->id() ?? 1;
+        // Buscar el usuario por ID
+        $usuarioExistente = UsuarioModel::findOrFail($id);
+        Log::info('Usuario encontrado para actualización.', ['usuarioExistente' => $usuarioExistente]);
+        Log::info('Prueba de logging');
 
-            // Actualizar el campo 'usuario' (nombre de usuario)
-            $usuario->usuario = strtolower(substr($validatedData['nombres'], 0, 1) . substr($validatedData['apellidos'], 0, 1));
+        // Actualizar datos del usuario
+        $nombres = ucfirst(trim($request->nombres));
+        $apellidos = ucfirst(trim($request->apellidos));
 
-            // Guardar los cambios en el usuario
-            $usuario->save();
+        $usuarioExistente->cedula = $request->cedula;
+        $usuarioExistente->nombres = $nombres;
+        $usuarioExistente->apellidos = $apellidos;
+        $usuarioExistente->correo = $request->correo;
+        $usuarioExistente->telefono = $request->telefono;
+        $usuarioExistente->id_rol = $request->id_rol;
+        $usuarioExistente->id_job = $request->id_job;
+        $usuarioExistente->id_titulo_academico = $request->id_titulo_academico;
+        $usuarioExistente->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
+        $usuarioExistente->ip_actualizacion = $request->ip();
+        $usuarioExistente->id_usuario_actualizo = auth()->id() ?? 1;
 
-            // Asignar carreras, si se proporcionaron
-            if (!empty($validatedData['id_carreras'])) {
-                $usuario->carreras()->sync($validatedData['id_carreras']); // Actualiza carreras, eliminando las anteriores si es necesario
+        // Guardar los cambios en la base de datos
+        $usuarioExistente->save();
+        Log::info('Datos de usuario actualizados exitosamente.');
+
+        // Actualizar las carreras del usuario
+        if ($request->id_carreras && is_array($request->id_carreras)) {
+            // Obtener las carreras que ya están asociadas al usuario
+            $carrerasExistentes = $usuarioExistente->carreras()->select('usuario_carrera.id_carrera')->pluck('id_carrera')->toArray();
+            Log::info('Carreras existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
+
+            // Verificar si alguna de las carreras ya está asignada
+            $carrerasDuplicadas = array_intersect($carrerasExistentes, $request->id_carreras);
+            Log::info('Carreras duplicadas encontradas.', ['carrerasDuplicadas' => $carrerasDuplicadas]);
+
+            if (!empty($carrerasDuplicadas)) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El usuario ya está inscrito en alguna de las carreras seleccionadas."
+                ], 400);
             }
 
-            // Asignar títulos académicos, si se proporcionaron (puede ser más de uno)
-            if (!empty($validatedData['id_titulo_academico'])) {
-                // Si tienes una tabla de relación entre usuarios y títulos académicos, usa sync para agregar/actualizar títulos
-                $usuario->titulosAcademicos()->sync($validatedData['id_titulo_academico']);
-            }
-
-            return response()->json([
-                'ok' => true,
-                'message' => 'Usuario actualizado correctamente',
-            ], 200);
-
-        } catch (\Illuminate\Database\Eloquent\ModelNotFoundException $e) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'Usuario no encontrado',
-            ], 404);
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'Error en la validación de los datos',
-                'errors' => $e->errors(),
-            ], 422);
-        } catch (\Exception $e) {
-            return response()->json([
-                'ok' => false,
-                'message' => 'Error al actualizar el usuario',
-                'error' => $e->getMessage(),
-            ], 500);
+            // Asignar las nuevas carreras sin duplicar
+            $usuarioExistente->carreras()->syncWithoutDetaching($request->id_carreras);
+            Log::info('Carreras actualizadas exitosamente.');
         }
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Usuario actualizado y carreras asignadas exitosamente.",
+            "data" => $usuarioExistente
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            "ok" => false,
+            "message" => "Usuario no encontrado"
+        ], 404);
+        
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
+
+
+
+    public function show($id)
+{
+    try {
+        // Log para el registro de acciones
+        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+
+        // Buscar el usuario por ID
+        $usuario = UsuarioModel::select(
+            "usuarios.id_usuario",
+            "usuarios.cedula",
+            "usuarios.nombres",
+            "usuarios.apellidos",
+            "usuarios.correo",
+            "usuarios.telefono",
+            "usuarios.usuario",
+            "usuarios.imagen_perfil",
+            "rol.id_rol",
+            "rol.descripcion as rol_descripcion",
+            "job.id_job",
+            "job.descripcion as job_descripcion",
+            "titulo_academico.id_titulo_academico",
+            "titulo_academico.descripcion as titulo_academico_descripcion",
+            "usuarios.estado",
+            UsuarioModel::raw("CONCAT(creador.nombres, ' ', creador.apellidos) as creador_nombre_completo")
+        )
+        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
+        ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")
+        ->leftJoin("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
+        ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
+        ->where("usuarios.id_usuario", $id) // Filtrar por ID
+        ->where("usuarios.estado", "A") // Asegurarse de que el usuario esté activo
+        ->with(['carreras' => function ($query) {
+            $query->select('carreras.id_carrera', 'carreras.nombre');  // Obtener los campos necesarios de las carreras
+        }])
+        ->first(); // Usar first() para obtener un único registro
+
+        // Verificar si el usuario fue encontrado
+        if (!$usuario) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Usuario no encontrado"
+            ], 404);
+        }
+
+        // Devolver el usuario encontrado
+        return response()->json([
+            "ok" => true,
+            "data" => $usuario
+        ], 200);
+
+    } catch (Exception $e) {
+        // Log del error
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
+
 
     public function login(Request $request)
     {
