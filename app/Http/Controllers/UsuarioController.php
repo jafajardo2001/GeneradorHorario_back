@@ -507,12 +507,22 @@ class UsuarioController extends Controller
     try {
         Log::info('Iniciando actualización de usuario.');
 
-        
+        // Validar campos requeridos
+        $modelo = new UsuarioModel();
+        $campos_requeridos = $modelo->getFillable();
+        $campos_recibidos = array_keys($request->all());
+        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+
+        if (!empty($campos_faltantes)) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
+            ], 400);
+        }
 
         // Buscar el usuario por ID
         $usuarioExistente = UsuarioModel::findOrFail($id);
         Log::info('Usuario encontrado para actualización.', ['usuarioExistente' => $usuarioExistente]);
-        Log::info('Prueba de logging');
 
         // Actualizar datos del usuario
         $nombres = ucfirst(trim($request->nombres));
@@ -534,23 +544,8 @@ class UsuarioController extends Controller
         $usuarioExistente->save();
         Log::info('Datos de usuario actualizados exitosamente.');
 
-        // Actualizar las carreras del usuario
+        // Actualizar las carreras del usuario sin comprobar duplicados
         if ($request->id_carreras && is_array($request->id_carreras)) {
-            // Obtener las carreras que ya están asociadas al usuario
-            $carrerasExistentes = $usuarioExistente->carreras()->select('usuario_carrera.id_carrera')->pluck('id_carrera')->toArray();
-            Log::info('Carreras existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
-
-            // Verificar si alguna de las carreras ya está asignada
-            $carrerasDuplicadas = array_intersect($carrerasExistentes, $request->id_carreras);
-            Log::info('Carreras duplicadas encontradas.', ['carrerasDuplicadas' => $carrerasDuplicadas]);
-
-            if (!empty($carrerasDuplicadas)) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "El usuario ya está inscrito en alguna de las carreras seleccionadas."
-                ], 400);
-            }
-
             // Asignar las nuevas carreras sin duplicar
             $usuarioExistente->carreras()->syncWithoutDetaching($request->id_carreras);
             Log::info('Carreras actualizadas exitosamente.');
@@ -558,7 +553,7 @@ class UsuarioController extends Controller
 
         return response()->json([
             "ok" => true,
-            "message" => "Usuario actualizado y carreras asignadas exitosamente.",
+            "message" => "Usuario actualizado exitosamente",
             "data" => $usuarioExistente
         ], 200);
 
@@ -579,6 +574,7 @@ class UsuarioController extends Controller
         ], 500);
     }
 }
+
 
 
 
