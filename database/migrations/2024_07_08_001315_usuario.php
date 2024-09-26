@@ -23,6 +23,7 @@ return new class extends Migration
             $table->binary('imagen_perfil')->nullable();
             $table->unsignedBigInteger('id_rol');
             $table->unsignedBigInteger('id_job');
+            $table->unsignedBigInteger('id_jornada');
             $table->unsignedBigInteger('id_titulo_academico');
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);

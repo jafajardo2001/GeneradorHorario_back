@@ -13,6 +13,7 @@ use App\Http\Controllers\ParaleloController;
 use App\Http\Controllers\PlanificacionAcademica;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\JornadaController;
 use App\Http\Middleware\AutenticacionSistema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -82,6 +83,10 @@ Route::prefix('istg')->group(
         // //Tiempo
         Route::get("show_jobs/", [JobController::class, 'getJobs']);
         Route::post("create_job/", [JobController::class, 'storeJob']);
+
+        // //Jornada   
+        Route::get("show_jornada/", [JornadaController::class, 'getJornada']);
+        Route::post("create_jornada/", [JornadaController::class, 'storeJornada']);
 
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
