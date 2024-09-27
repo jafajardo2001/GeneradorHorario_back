@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CarreraModel;
 use App\Models\RolModel;
 use App\Models\TituloAcademicoModel;
+use App\Models\JornadaModel;
 
 use App\Models\UsuarioModel;
 use App\Services\MensajeAlertasServicio;
@@ -24,100 +25,109 @@ class UsuarioController extends Controller
         $this->servicio_informe = new MensajeAlertasServicio();
     }
     public function storeUsuarios(Request $request)
-{
-    try {
-        Log::info('Iniciando creación o actualización de usuario.');
+    {
+        try {
+            Log::info('Iniciando creación o actualización de usuario.');
 
-        // Validar campos requeridos
-        $modelo = new UsuarioModel();
-        $campos_requeridos = $modelo->getFillable();
-        $campos_recibidos = array_keys($request->all());
-        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+            // Validar campos requeridos
+            $modelo = new UsuarioModel();
+            $campos_requeridos = $modelo->getFillable();
+            $campos_recibidos = array_keys($request->all());
+            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
 
-        if (!empty($campos_faltantes)) {
-            return response()->json([
-                "ok" => false,
-                "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-            ], 400);
-        }
-
-        // Verificar si ya existe el usuario
-        $usuarioExistente = UsuarioModel::where('cedula', $request->cedula)
-            ->where('nombres', $request->nombres)
-            ->where('apellidos', $request->apellidos)
-            ->first();
-
-        Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $usuarioExistente]);
-
-        if ($usuarioExistente) {
-            // Obtener las carreras que ya están asociadas al usuario, especificando las tablas
-            $carrerasExistentes = $usuarioExistente->carreras()->select('usuario_carrera.id_carrera')->pluck('id_carrera')->toArray();
-            Log::info('Carreras existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
-
-            // Verificar si alguna de las carreras ya está asignada
-            $carrerasDuplicadas = array_intersect($carrerasExistentes, $request->id_carreras);
-            Log::info('Carreras duplicadas encontradas.', ['carrerasDuplicadas' => $carrerasDuplicadas]);
-
-            if (!empty($carrerasDuplicadas)) {
+            if (!empty($campos_faltantes)) {
                 return response()->json([
                     "ok" => false,
-                    "message" => "El usuario ya está inscrito en alguna de las carreras seleccionadas."
+                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
                 ], 400);
             }
 
-            // Agregar las nuevas carreras sin duplicar
-            $usuarioExistente->carreras()->syncWithoutDetaching($request->id_carreras);
+            // Verificar si ya existe el usuario
+            $usuarioExistente = UsuarioModel::where('cedula', $request->cedula)
+                ->where('nombres', $request->nombres)
+                ->where('apellidos', $request->apellidos)
+                ->first();
 
-            return response()->json([
-                "ok" => true,
-                "message" => "Carreras adicionales asignadas exitosamente."
-            ], 200);
+            Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $usuarioExistente]);
 
-        } else {
-            Log::info('El usuario no existe, creando uno nuevo.');
-            // Crear un nuevo usuario si no existe
-            $nombres = ucfirst(trim($request->nombres));
-            $apellidos = ucfirst(trim($request->apellidos));
+            if ($usuarioExistente) {
+                // Obtener las carreras y jornadas ya asignadas
+                $carrerasJornadasExistentes = $usuarioExistente->carrerasJornadas()
+                    ->select('usuario_carrera_jornada.id_carrera', 'usuario_carrera_jornada.id_jornada')
+                    ->get();
 
-            $modelo->cedula = $request->cedula;
-            $modelo->nombres = $nombres;
-            $modelo->apellidos = $apellidos;
-            $modelo->correo = $request->correo;
-            $modelo->telefono = $request->telefono;
-            $modelo->clave = bcrypt($request->cedula);
-            $modelo->id_rol = $request->id_rol;
-            $modelo->id_job = $request->id_job;
-            $modelo->id_titulo_academico = $request->id_titulo_academico;
-            $modelo->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->estado = "A";
-            $modelo->save();
+                Log::info('Carreras y jornadas existentes del usuario.', ['carrerasJornadasExistentes' => $carrerasJornadasExistentes]);
 
-            // Asignar carreras al usuario recién creado sin duplicar
-            if ($request->id_carreras && is_array($request->id_carreras)) {
-                $modelo->carreras()->syncWithoutDetaching($request->id_carreras);
+                // Verificar si alguna combinación de carrera y jornada ya está asignada
+                foreach ($request->id_carreras as $key => $idCarrera) {
+                    $idJornada = $request->id_jornadas[$key]; // Obtenemos la jornada correspondiente a esa carrera
+                    if ($carrerasJornadasExistentes->contains('id_carrera', $idCarrera) && $carrerasJornadasExistentes->contains('id_jornada', $idJornada)) {
+                        return response()->json([
+                            "ok" => false,
+                            "message" => "El usuario ya está asignado a la carrera con la jornada especificada."
+                        ], 400);
+                    }
+                }
+
+                // Asignar nuevas carreras y jornadas sin duplicar
+                foreach ($request->id_carreras as $key => $idCarrera) {
+                    $idJornada = $request->id_jornadas[$key];
+                    $usuarioExistente->carrerasJornadas()->syncWithoutDetaching([$idCarrera => ['id_jornada' => $idJornada]]);
+                }
+
+                return response()->json([
+                    "ok" => true,
+                    "message" => "Carreras y jornadas adicionales asignadas exitosamente."
+                ], 200);
+
+            } else {
+                Log::info('El usuario no existe, creando uno nuevo.');
+
+                // Crear un nuevo usuario si no existe
+                $nombres = ucfirst(trim($request->nombres));
+                $apellidos = ucfirst(trim($request->apellidos));
+
+                $modelo->cedula = $request->cedula;
+                $modelo->nombres = $nombres;
+                $modelo->apellidos = $apellidos;
+                $modelo->correo = $request->correo;
+                $modelo->telefono = $request->telefono;
+                $modelo->clave = bcrypt($request->cedula);
+                $modelo->id_rol = $request->id_rol;
+                $modelo->id_job = $request->id_job;
+                $modelo->id_titulo_academico = $request->id_titulo_academico;
+                $modelo->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
+                $modelo->ip_creacion = $request->ip();
+                $modelo->ip_actualizacion = $request->ip();
+                $modelo->id_usuario_creador = auth()->id() ?? 1;
+                $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+                $modelo->estado = "A";
+                $modelo->save();
+
+                // Asignar carreras y jornadas al usuario recién creado
+                foreach ($request->id_carreras as $key => $idCarrera) {
+                    $idJornada = $request->id_jornadas[$key];
+                    $modelo->carrerasJornadas()->syncWithoutDetaching([$idCarrera => ['id_jornada' => $idJornada]]);
+                }
+
+                return response()->json([
+                    "ok" => true,
+                    "message" => "Usuario creado y carreras con jornadas asignadas con éxito."
+                ], 200);
             }
 
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Línea : " . $e->getLine());
+
             return response()->json([
-                "ok" => true,
-                "message" => "Usuario creado y carreras asignadas con éxito."
-            ], 200);
+                "ok" => false,
+                "message" => "Error interno en el servidor"
+            ], 500);
         }
-
-    } catch (Exception $e) {
-        Log::error(__FILE__ . " > " . __FUNCTION__);
-        Log::error("Mensaje : " . $e->getMessage());
-        Log::error("Línea : " . $e->getLine());
-
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
     }
-}
+
 
 
 
@@ -178,6 +188,73 @@ class UsuarioController extends Controller
         }
     }
 
+    public function obtenerJornadasPorDocenteYCarrera($idDocente, $idCarrera)
+    {
+        try {
+            // Obtener el ID del rol "Docente"
+            $rolDocente = RolModel::select('id_rol')
+                ->where('descripcion', '=', 'Docente')
+                ->first();
+
+            if (!$rolDocente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Rol Docente no encontrado"
+                ], 404);
+            }
+
+            // Verificar que el usuario sea un docente
+            $docente = UsuarioModel::select('id_usuario')
+                ->where('id_usuario', '=', $idDocente)
+                ->where('id_rol', '=', $rolDocente->id_rol)
+                ->where('estado', '=', 'A')  // Solo docentes activos
+                ->first();
+
+            if (!$docente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Docente no encontrado"
+                ], 404);
+            }
+
+            // Obtener las jornadas asignadas al docente para la carrera especificada
+            $jornadas = DB::table('usuario_carrera_jornada')
+                ->select(
+                    'jornadas.descripcion as jornada',
+                    'carreras.descripcion as carrera',
+                    'jornadas.hora_inicio',
+                    'jornadas.hora_fin'
+                )
+                ->join('jornadas', 'usuario_carrera_jornada.id_jornada', '=', 'jornadas.id_jornada') // Unión con la tabla jornadas
+                ->join('carreras', 'usuario_carrera_jornada.id_carrera', '=', 'carreras.id_carrera') // Unión con la tabla carreras
+                ->where('usuario_carrera_jornada.id_usuario', '=', $idDocente)
+                ->where('usuario_carrera_jornada.id_carrera', '=', $idCarrera)
+                ->get();
+
+            // Validar si no se encontraron jornadas para ese docente y carrera
+            if ($jornadas->isEmpty()) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "No se encontraron jornadas para este docente en la carrera seleccionada"
+                ], 404);
+            }
+
+            // Retornar las jornadas en formato JSON
+            return response()->json([
+                "ok" => true,
+                "data" => $jornadas
+            ], 200);
+
+        } catch (\Exception $e) {
+            // Manejo de errores
+            return response()->json([
+                "ok" => false,
+                "message" => "Error en el servidor"
+            ], 500);
+        }
+    }
+
+
     
 
 
@@ -187,7 +264,7 @@ class UsuarioController extends Controller
         try {
             $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
 
-            // Selecciona los datos requeridos, incluyendo las carreras asociadas al usuario
+            // Selecciona los datos requeridos, incluyendo las carreras y jornadas asociadas al usuario
             $usuarios = UsuarioModel::select(
                 "usuarios.id_usuario",
                 "usuarios.cedula",
@@ -214,6 +291,9 @@ class UsuarioController extends Controller
             ->with(['carreras' => function ($query) {
                 $query->select('carreras.id_carrera', 'carreras.nombre');  // Obtener los campos necesarios de las carreras
             }])
+            ->with(['jornadas' => function ($query) {
+                $query->select('jornadas.id_jornada', 'jornadas.descripcion');  // Obtener los campos necesarios de las jornadas
+            }])
             ->get();
 
             return response()->json([
@@ -231,6 +311,7 @@ class UsuarioController extends Controller
             ], 500);
         }
     }
+
 
 
 
