@@ -47,15 +47,4 @@ class UsuarioModel extends Model
     {
         return $this->belongsToMany(CarreraModel::class, 'usuario_carrera', 'id_usuario', 'id_carrera');
     }
-    public function carrerasJornadas()
-    {
-        return $this->belongsToMany(CarreraModel::class, 'usuario_carrera_jornada', 'id_usuario', 'id_carrera')
-                    ->withPivot('id_jornada')
-                    ->withTimestamps();
-    }
-    // En UsuarioModel.php
-    public function jornadas()
-    {
-        return $this->belongsToMany(JornadaModel::class, 'usuario_jornada', 'id_usuario', 'id_jornada');
-    }
 }

@@ -76,6 +76,7 @@ class ArrancarSistema extends Seeder
                 "id_rol" => 1,
                 "id_titulo_academico" => 1,
                 "id_job" =>1,
+                "id_jornada" => 1,
                 "ip_creacion" => "127.0.0.1",
                 "ip_actualizacion" => "127.0.0.1",
                 "id_usuario_creador" => 1,

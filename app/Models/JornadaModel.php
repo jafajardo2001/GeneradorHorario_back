@@ -22,10 +22,4 @@ class JornadaModel extends Model
         'fecha_actualizacion',
         'estado'
     ];
-    public function usuariosCarreras()
-    {
-        return $this->belongsToMany(UsuarioModel::class, 'usuario_carrera_jornada', 'id_jornada', 'id_usuario')
-                    ->withPivot('id_carrera')
-                    ->withTimestamps();
-    }
 }
