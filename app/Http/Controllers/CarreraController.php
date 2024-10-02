@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Responses\TypeResponse;
 use App\Models\CarreraModel;
+use App\Models\JornadaModel;
 use App\Services\Validaciones;
 use Exception;
 use Illuminate\Http\Request;
@@ -41,6 +42,7 @@ class CarreraController extends Controller
             }
             
             $modelo->nombre = $request->nombre;
+            $modelo->id_jornada = $request->id_jornada;
             $modelo->ip_creacion = $request->ip();
             $modelo->ip_actualizacion = $request->ip();
             $modelo->id_usuario_creador = auth()->id() ?? 1;
@@ -136,22 +138,33 @@ class CarreraController extends Controller
 
     public function showCarrera()
     {
-        try{
-            $asignatura = CarreraModel::select("id_carrera","nombre","estado")->whereIn("estado",["A","I"])->get();
-            return Response()->json([
+        try {
+            $asignatura = CarreraModel::select(
+                "carreras.id_carrera",
+                "carreras.nombre",
+                "jornada.id_jornada",
+                "jornada.descripcion as descripcion_jornada",  // Usamos alias para 'descripcion'
+                "carreras.estado"
+            )
+            ->join('jornada', 'carreras.id_jornada', '=', 'jornada.id_jornada')
+            ->whereIn("carreras.estado", ["A", "I"])
+            ->get();    
+
+            return response()->json([
                 "ok" => true,
                 "data" => $asignatura
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
+            ], 200);
+        } catch (Exception $e) {
+            log::error(__FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Linea : " . $e->getLine());
-            
-            return Response()->json([
+
+            return response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
-            ],500);
+            ], 500);
         }
     }
+
 
 }

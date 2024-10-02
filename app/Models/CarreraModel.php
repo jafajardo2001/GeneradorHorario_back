@@ -14,6 +14,13 @@ class CarreraModel extends Model
     const CREATED_AT = "fecha_creacion";
     const UPDATED_AT = "fecha_actualizacion";
     
-    protected $fillable = ['nombre'];
+    protected $fillable = ['nombre',
+    'id_jornada'];
+
+    public function jornada()
+        {
+            return $this->belongsTo(JornadaModel::class, 'id_jornada');
+            
+        }
     
 }
