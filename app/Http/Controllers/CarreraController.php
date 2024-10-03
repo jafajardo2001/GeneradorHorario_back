@@ -115,7 +115,7 @@ class CarreraController extends Controller
                 ], 404);
             }
             CarreraModel::find($id)->update([
-                "nombre" => isset($request->nombre)?$request->nombre:$asignatura->nombre,
+                "nombre" => isset($request->nombre)?$request->nombre:$carrera->nombre,
                 "id_usuario_actualizo" => auth()->id() ?? 1,
                 "ip_actualizo" => $request->ip(),
                 "estado" => isset($request->estado) ? $request->estado : "A"
