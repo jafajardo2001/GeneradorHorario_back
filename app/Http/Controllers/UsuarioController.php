@@ -5,7 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\CarreraModel;
 use App\Models\RolModel;
 use App\Models\TituloAcademicoModel;
-
+use App\Models\JornadaModel;
 use App\Models\UsuarioModel;
 use App\Services\MensajeAlertasServicio;
 use Exception;
@@ -533,99 +533,87 @@ class UsuarioController extends Controller
 
 
     public function updateUsuarios(Request $request, $id)
-    {
-        try {
-            Log::info('Iniciando actualización de usuario.');
-    
-            // Validar campos requeridos
-            $modelo = new UsuarioModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
-    
-            if (!empty($campos_faltantes)) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-                ], 400);
-            }
-    
-            // Buscar el usuario por ID
-            $usuarioExistente = UsuarioModel::findOrFail($id);
-            Log::info('Usuario encontrado para actualización.', ['usuarioExistente' => $usuarioExistente]);
-    
-            // Actualizar datos del usuario
-            $nombres = ucfirst(trim($request->nombres));
-            $apellidos = ucfirst(trim($request->apellidos));
-    
-            $usuarioExistente->cedula = $request->cedula;
-            $usuarioExistente->nombres = $nombres;
-            $usuarioExistente->apellidos = $apellidos;
-            $usuarioExistente->correo = $request->correo;
-            $usuarioExistente->telefono = $request->telefono;
-            $usuarioExistente->id_rol = $request->id_rol;
-            $usuarioExistente->id_job = $request->id_job;
-            $usuarioExistente->id_titulo_academico = $request->id_titulo_academico;
-            $usuarioExistente->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
-            $usuarioExistente->ip_actualizacion = $request->ip();
-            $usuarioExistente->id_usuario_actualizo = auth()->id() ?? 1;
-    
-            // Guardar los cambios en la base de datos
-            $usuarioExistente->save();
-            Log::info('Datos de usuario actualizados exitosamente.');
-    
-            // Actualizar las carreras y jornadas del usuario
-            if ($request->carreras_jornadas && is_array($request->carreras_jornadas)) {
-                $dataToSync = [];
-    
-                foreach ($request->carreras_jornadas as $item) {
-                    if (isset($item['id_carrera']) && isset($item['id_jornada'])) {
-                        $dataToSync[$item['id_carrera']] = ['id_jornada' => $item['id_jornada']];
-                    }
-                }
-    
-                // Asignar las nuevas carreras y sus jornadas
-                $usuarioExistente->carreras()->syncWithoutDetaching($dataToSync);
-                Log::info('Carreras y jornadas actualizadas exitosamente.');
-            }
-    
-            return response()->json([
-                "ok" => true,
-                "message" => "Usuario actualizado exitosamente",
-                "data" => $usuarioExistente
-            ], 200);
-    
-        } catch (ModelNotFoundException $e) {
-            return response()->json([
-                "ok" => false,
-                "message" => "Usuario no encontrado"
-            ], 404);
-            
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje : " . $e->getMessage());
-            Log::error("Línea : " . $e->getLine());
-    
-            return response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
-        }
-    }
-    
-
-
-
-
-
-public function show($id)
 {
     try {
-        // Log para el registro de acciones
-        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+        Log::info('Iniciando actualización de usuario.');
 
         // Buscar el usuario por ID
-        $usuario = UsuarioModel::with(['carreras.jornada']) // Cargar carreras y sus jornadas
+        $usuarioExistente = UsuarioModel::findOrFail($id);
+        Log::info('Usuario encontrado para actualización.', ['usuarioExistente' => $usuarioExistente]);
+
+        // Actualizar datos del usuario
+        $nombres = ucfirst(trim($request->nombres));
+        $apellidos = ucfirst(trim($request->apellidos));
+
+        $usuarioExistente->cedula = $request->cedula;
+        $usuarioExistente->nombres = $nombres;
+        $usuarioExistente->apellidos = $apellidos;
+        $usuarioExistente->correo = $request->correo;
+        $usuarioExistente->telefono = $request->telefono;
+        $usuarioExistente->id_rol = $request->id_rol;
+        $usuarioExistente->id_job = $request->id_job;
+        $usuarioExistente->id_titulo_academico = $request->id_titulo_academico;
+        $usuarioExistente->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
+        $usuarioExistente->ip_actualizacion = $request->ip();
+        $usuarioExistente->id_usuario_actualizo = auth()->id() ?? 1;
+
+        // Guardar los cambios en la base de datos
+        $usuarioExistente->save();
+        Log::info('Datos de usuario actualizados exitosamente.');
+
+        // Actualizar las carreras y jornadas del usuario
+        if (is_array($request->carreras_jornadas)) {
+            // Preparar los datos para sync
+            $dataToSync = collect($request->carreras_jornadas)->mapWithKeys(function ($carrera) {
+                return [$carrera['id_carrera'] => ['id_jornada' => $carrera['id_jornada']]];
+            });
+
+            // Usar el método sync para reemplazar todas las relaciones anteriores
+            $usuarioExistente->carreras()->sync($dataToSync);
+            Log::info('Carreras y jornadas actualizadas exitosamente.');
+        }
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Usuario actualizado exitosamente",
+            "data" => $usuarioExistente
+        ], 200);
+
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            "ok" => false,
+            "message" => "Usuario no encontrado"
+        ], 404);
+        
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
+    
+
+
+
+
+
+    public function show($id)
+    {
+        try {
+            // Log para el registro de acciones
+            $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+    
+            // Buscar el usuario por ID con carreras y pivot id_jornada
+            $usuario = UsuarioModel::with(['carreras' => function ($query) {
+                $query->select('carreras.id_carrera', 'carreras.nombre')
+                      ->withPivot('id_jornada'); // Obtener el id_jornada del pivot
+            }])
             ->select(
                 "usuarios.id_usuario",
                 "usuarios.cedula",
@@ -651,34 +639,39 @@ public function show($id)
             ->where("usuarios.id_usuario", $id) // Filtrar por ID
             ->where("usuarios.estado", "A") // Asegurarse de que el usuario esté activo
             ->first(); // Usar first() para obtener un único registro
-
-        // Verificar si el usuario fue encontrado
-        if (!$usuario) {
+    
+            // Verificar si el usuario fue encontrado
+            if (!$usuario) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Usuario no encontrado"
+                ], 404);
+            }
+    
+            // Cargar las jornadas manualmente
+            foreach ($usuario->carreras as $carrera) {
+                $carrera->jornada = JornadaModel::find($carrera->pivot->id_jornada);
+            }
+    
+            // Devolver el usuario encontrado con las carreras y sus jornadas
+            return response()->json([
+                "ok" => true,
+                "data" => $usuario
+            ], 200);
+    
+        } catch (Exception $e) {
+            // Log del error
+            log::error(__FILE__ . " > " . __FUNCTION__);
+            log::error("Mensaje : " . $e->getMessage());
+            log::error("Línea : " . $e->getLine());
+    
             return response()->json([
                 "ok" => false,
-                "message" => "Usuario no encontrado"
-            ], 404);
+                "message" => "Error interno en el servidor"
+            ], 500);
         }
-
-        // Devolver el usuario encontrado con las carreras y sus jornadas
-        return response()->json([
-            "ok" => true,
-            "data" => $usuario
-        ], 200);
-
-    } catch (Exception $e) {
-        // Log del error
-        log::error(__FILE__ . " > " . __FUNCTION__);
-        log::error("Mensaje : " . $e->getMessage());
-        log::error("Línea : " . $e->getLine());
-
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
     }
-}
-
+    
 
 
 
