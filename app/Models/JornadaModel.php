@@ -24,6 +24,6 @@ class JornadaModel extends Model
     ];
     public function carreras()
     {
-        return $this->hasMany(CarreraModel::class, 'id_jornada');
+        return $this->belongsTo(CarreraModel::class, 'id_jornada');
     }
 }

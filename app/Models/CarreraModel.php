@@ -19,7 +19,7 @@ class CarreraModel extends Model
 
     public function jornada()
     {
-        return $this->belongsTo(JornadaModel::class, 'id_jornada');
+        return $this->belongsTo(JornadaModel::class, 'id_jornada', 'id_jornada');
     }
 
     public function usuarios()
