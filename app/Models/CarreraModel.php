@@ -18,9 +18,15 @@ class CarreraModel extends Model
     'id_jornada'];
 
     public function jornada()
-        {
-            return $this->belongsTo(JornadaModel::class, 'id_jornada');
-            
-        }
+    {
+        return $this->belongsTo(JornadaModel::class, 'id_jornada');
+    }
+
+    public function usuarios()
+    {
+        return $this->belongsToMany(UsuarioModel::class, 'usuario_carrera_jornada', 'id_carrera', 'id_usuario')
+                    ->withPivot('id_jornada') // Incluye id_jornada desde la tabla pivote
+                    ; // Si añadiste timestamps en la tabla pivote
+    }
     
 }

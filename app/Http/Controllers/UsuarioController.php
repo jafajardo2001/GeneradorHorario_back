@@ -41,6 +41,14 @@ class UsuarioController extends Controller
             ], 400);
         }
 
+        // Validar que se reciban carreras con sus jornadas
+        if (!$request->has('carreras_jornadas') || !is_array($request->carreras_jornadas)) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Es necesario enviar las carreras con sus respectivas jornadas."
+            ], 400);
+        }
+
         // Verificar si ya existe el usuario
         $usuarioExistente = UsuarioModel::where('cedula', $request->cedula)
             ->where('nombres', $request->nombres)
@@ -50,29 +58,39 @@ class UsuarioController extends Controller
         Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $usuarioExistente]);
 
         if ($usuarioExistente) {
-            // Obtener las carreras que ya están asociadas al usuario, especificando las tablas
-            $carrerasExistentes = $usuarioExistente->carreras()->select('usuario_carrera.id_carrera')->pluck('id_carrera')->toArray();
-            Log::info('Carreras existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
+            // Obtener las combinaciones de carrera y jornada existentes del usuario
+            $carrerasExistentes = $usuarioExistente->carreras()
+                ->select('usuario_carrera_jornada.id_carrera', 'usuario_carrera_jornada.id_jornada')
+                ->get()->toArray();
 
-            // Verificar si alguna de las carreras ya está asignada
-            $carrerasDuplicadas = array_intersect($carrerasExistentes, $request->id_carreras);
+            Log::info('Carreras y jornadas existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
+
+            // Verificar si alguna combinación ya está asignada
+            $carrerasDuplicadas = [];
+            foreach ($request->carreras_jornadas as $cj) {
+                if (in_array(['id_carrera' => $cj['id_carrera'], 'id_jornada' => $cj['id_jornada']], $carrerasExistentes)) {
+                    $carrerasDuplicadas[] = $cj;
+                }
+            }
+
             Log::info('Carreras duplicadas encontradas.', ['carrerasDuplicadas' => $carrerasDuplicadas]);
 
             if (!empty($carrerasDuplicadas)) {
                 return response()->json([
                     "ok" => false,
-                    "message" => "El usuario ya está inscrito en alguna de las carreras seleccionadas."
+                    "message" => "El usuario ya está inscrito en alguna de las combinaciones de carrera y jornada seleccionadas."
                 ], 400);
             }
 
-            // Agregar las nuevas carreras sin duplicar
-            $usuarioExistente->carreras()->syncWithoutDetaching($request->id_carreras);
+            // Agregar las nuevas combinaciones de carrera y jornada sin duplicar
+            foreach ($request->carreras_jornadas as $cj) {
+                $usuarioExistente->carreras()->syncWithoutDetaching([$cj['id_carrera'] => ['id_jornada' => $cj['id_jornada']]]);
+            }
 
             return response()->json([
                 "ok" => true,
                 "message" => "Carreras adicionales asignadas exitosamente."
             ], 200);
-
         } else {
             Log::info('El usuario no existe, creando uno nuevo.');
             // Crear un nuevo usuario si no existe
@@ -96,14 +114,15 @@ class UsuarioController extends Controller
             $modelo->estado = "A";
             $modelo->save();
 
-            // Asignar carreras al usuario recién creado sin duplicar
-            if ($request->id_carreras && is_array($request->id_carreras)) {
-                $modelo->carreras()->syncWithoutDetaching($request->id_carreras);
+            // Asignar carreras y jornadas al usuario recién creado
+            foreach ($request->carreras_jornadas as $cj) {
+                // Asegúrate de que la relación esté configurada correctamente
+                $modelo->carreras()->syncWithoutDetaching([$cj['id_carrera'] => ['id_jornada' => $cj['id_jornada']]]);
             }
 
             return response()->json([
                 "ok" => true,
-                "message" => "Usuario creado y carreras asignadas con éxito."
+                "message" => "Usuario creado y carreras con jornadas asignadas con éxito."
             ], 200);
         }
 
@@ -118,6 +137,8 @@ class UsuarioController extends Controller
         ], 500);
     }
 }
+
+
 
 
 
@@ -211,9 +232,9 @@ class UsuarioController extends Controller
             ->leftJoin("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
             ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
             ->where("usuarios.estado", "A")
-            ->with(['carreras' => function ($query) {
-                $query->select('carreras.id_carrera', 'carreras.nombre');  // Obtener los campos necesarios de las carreras
-            }])
+             //->with(['carreras' => function ($query) {
+             //    $query->select('carreras.id_carrera', 'carreras.nombre');  // Obtener los campos necesarios de las carreras
+            // }])
             ->get();
 
             return response()->json([

@@ -18,13 +18,16 @@ return new class extends Migration
             $table->foreign('id_usuario')->references('id_usuario')->on('usuarios')->onDelete('cascade');
             $table->foreign('id_jornada')->references('id_jornada')->on('jornada')->onDelete('cascade');
 
+            
             $table->foreign('id_carrera')->references('id_carrera')->on('carreras')->onDelete('cascade');
+            
         });
+
     }
 
     public function down(): void
     {
-        Schema::dropIfExists('usuario_carrera');
+        Schema::dropIfExists('usuario_carrera_jornada');
     }
 };
 

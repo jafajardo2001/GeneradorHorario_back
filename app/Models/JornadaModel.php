@@ -22,4 +22,8 @@ class JornadaModel extends Model
         'fecha_actualizacion',
         'estado'
     ];
+    public function carreras()
+    {
+        return $this->hasMany(CarreraModel::class, 'id_jornada');
+    }
 }

@@ -14,56 +14,60 @@ class CarreraController extends Controller
 {
 
     public function storeCarrera(Request $request)
-    {
-        try{
-
-            // Verificar si la carrera ya existe
-            $carreraExistente = CarreraModel::where('nombre', ucfirst(trim($request->nombre)))
-                ->where('estado', 'A')
-                ->first();
-
-            if ($carreraExistente) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "La carrera ya existe.",
-                ], 400);
-            }
-            
-            $modelo = new CarreraModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+{
+    try{
+        // Validar los campos obligatorios
+        $modelo = new CarreraModel();
+        $campos_requeridos = $modelo->getFillable();
+        $campos_recibidos = array_keys($request->all());
+        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
         
-            if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-                ], 400);
-            }
-            
-            $modelo->nombre = $request->nombre;
-            $modelo->id_jornada = $request->id_jornada;
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->estado = "A";
-            $modelo->save();
-            return Response()->json([
-                "ok" => true,
-                "message" => "Carrera creada con exito"
-            ], 200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
+        if (!empty($campos_faltantes)) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
+            ], 400);
         }
+
+        // Verificar si la combinación de carrera y jornada ya existe
+        $carreraExistente = CarreraModel::where('nombre', ucfirst(trim($request->nombre)))
+            ->where('id_jornada', $request->id_jornada)
+            ->where('estado', 'A')
+            ->first();
+
+        if ($carreraExistente) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La carrera '" . $request->nombre . "' ya está registrada en la jornada seleccionada."
+            ], 400);
+        }
+        
+        // Crear la nueva carrera
+        $modelo->nombre = ucfirst(trim($request->nombre));  // Asegúrate de capitalizar el nombre
+        $modelo->id_jornada = $request->id_jornada;
+        $modelo->ip_creacion = $request->ip();
+        $modelo->ip_actualizacion = $request->ip();
+        $modelo->id_usuario_creador = auth()->id() ?? 1;
+        $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+        $modelo->estado = "A";
+        $modelo->save();
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Carrera creada con éxito"
+        ], 200);
+    } catch (Exception $e) {
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
     public function deleteCarrera(Request $request,$id)
     {  
