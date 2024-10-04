@@ -16,18 +16,9 @@ class ParaleloController extends Controller
     public function storeParalelo(Request $request)
     {
         try{
+            
             $modelo = new ParaleloModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
-
-            if (!empty($campos_faltantes)) {
-                log::info("Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes));
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-                ], 400);
-            }
+           
 
             // Validar si el paralelo ya existe
             $paraleloExistente = ParaleloModel::where('paralelo', $request->paralelo)->first();
@@ -37,7 +28,7 @@ class ParaleloController extends Controller
                     "message" => "El paralelo ya existe"
                 ], 400);
             }
-
+            
             $modelo->paralelo = $request->paralelo;
             $modelo->ip_creacion = $request->ip();
             $modelo->ip_actualizacion = $request->ip();
@@ -45,46 +36,44 @@ class ParaleloController extends Controller
             $modelo->id_usuario_actualizo = auth()->id() ?? 1;
             $modelo->estado = "A";
             $modelo->save();
-
-            return response()->json([
+            return Response()->json([
                 "ok" => true,
                 "message" => "Paralelo creado Exitosamente"
             ], 200);
-        } catch (Exception $e) {
-            log::error(__FILE__ . " > " . __FUNCTION__);
+        }catch(Exception $e){
+            log::error( __FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Linea : " . $e->getLine());
 
-            return response()->json([
-                "ok" => false,
+            return Response()->json([
+                "ok" => true,
                 "message" => "Error interno en el servidor"
             ], 500);
         }
     }
 
 
-
     public function deleteParalelo(Request $request,$id)
-    {
+    {  
         try{
-            $asignatura = ParaleloModel::find($id);
-            if(!$asignatura){
+            $paralelo = ParaleloModel::find($id);
+            if(!$paralelo){
                 return Response()->json([
                     "ok" => true,
                     "message" => "El paralelo no existe con el id $id"
-                ], 400);
+                ], 400);    
             }
-
-            ParaleloModel::find($id)->updated([
+            
+            ParaleloModel::find($id)->update([
                 "estado" => "E",
                 "id_usuario_actualizo" => auth()->id() ?? 1,
                 "ip_actualizo" => $request->ip(),
-
+                "fecha_actualizacion" => now(),
             ]);
 
             return Response()->json([
                 "ok" => true,
-                "message" => "Carrera eliminada con exito"
+                "message" => "Paralelo eliminado con exito"
             ],200);
         }catch(Exception $e){
             log::error( __FILE__ . " > " . __FUNCTION__);
@@ -96,14 +85,14 @@ class ParaleloController extends Controller
                 "message" => "Error interno en el servidor"
             ], 500);
 
-        }
+        }   
     }
 
     public function showParalelo()
     {
         try{
             $paralelo = ParaleloModel::select("paralelo.id_paralelo","paralelo.paralelo","paralelo.estado","usuarios.usuario as usuarios_ultima_gestion","paralelo.fecha_actualizacion")
-            ->join('usuarios','paralelo.id_usuario_actualizo','usuarios.id_usuario')
+            ->join('usuarios','paralelo.id_usuario_actualizo','usuarios.id_usuario')       
             ->whereIn("paralelo.estado",["A","I"])
             ->orderBy("paralelo.paralelo")
             ->get();
@@ -115,7 +104,7 @@ class ParaleloController extends Controller
             log::error( __FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Linea : " . $e->getLine());
-
+            
             return Response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
@@ -153,7 +142,7 @@ class ParaleloController extends Controller
             log::error( __FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Linea : " . $e->getLine());
-
+            
             return Response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"

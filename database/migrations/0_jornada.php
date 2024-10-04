@@ -11,9 +11,9 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('carreras', function (Blueprint $table) {
-            $table->id('id_carrera'); // Bigint primary key
-            $table->string('nombre',50)->nullable(false);
+        Schema::create('jornada', function (Blueprint $table) {
+            $table->id('id_jornada'); // Bigint primary key
+            $table->text('descripcion');
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);
             $table->integer('id_usuario_creador');
@@ -29,6 +29,5 @@ return new class extends Migration
      */
     public function down(): void
     {
-        //
     }
 };

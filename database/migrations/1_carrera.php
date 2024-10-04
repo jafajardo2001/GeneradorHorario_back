@@ -11,19 +11,10 @@ return new class extends Migration
      */
     public function up(): void
     {
-        Schema::create('usuarios', function (Blueprint $table) {
-            $table->id('id_usuario'); // Bigint primary key
-            $table->string('cedula', 18)->unique();
-            $table->string('nombres', 255);
-            $table->string('apellidos', 255);
-            $table->string('correo')->unique();
-            $table->string('telefono', 15); // Teléfono sin auto_increment ni primary key
-            $table->string('usuario', 150);
-            $table->string('clave', 255);
-            $table->binary('imagen_perfil')->nullable();
-            $table->unsignedBigInteger('id_rol');
-            $table->unsignedBigInteger('id_job');
-            $table->unsignedBigInteger('id_titulo_academico');
+        Schema::create('carreras', function (Blueprint $table) {
+            $table->id('id_carrera'); // Bigint primary key
+            $table->string('nombre',50)->nullable(false);
+            $table->unsignedBigInteger('id_jornada');
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);
             $table->integer('id_usuario_creador');
@@ -33,7 +24,11 @@ return new class extends Migration
             $table->enum('estado', ['A', 'E', 'I'])->default('A');
 
             // Foreign key constraint
-            $table->foreign('id_rol')->references('id_rol')->on('rol');
+            $table->foreign('id_jornada')
+                ->references('id_jornada')
+                ->on('jornada')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
         });
     }
 

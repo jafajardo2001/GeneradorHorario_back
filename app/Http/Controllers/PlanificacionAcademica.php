@@ -16,37 +16,37 @@ use function Laravel\Prompts\error;
 
 class PlanificacionAcademica extends Controller
 {
-
+    
     public function store(Request $request)
-{
-    try {
-        $info_request = $request->data;
-        if (!is_array($info_request)) {
-            throw new Exception("Los parámetros de esta API deben ser un arreglo");
-        }
+    {
+        try {
+            $info_request = $request->data;
+            if (!is_array($info_request)) {
+                throw new Exception("Los parámetros de esta API deben ser un arreglo");
+            }
 
-        $duplicates = [];
-        foreach ($info_request as $valor) {
-            $valor = (object)$valor;
-            $id_instituto = $valor->id_instituto ?? 0;
-            $id_carrera = $valor->id_carrera ?? 0;
-            $id_materia = $valor->id_materia ?? 0;
-            $id_curso = $valor->id_curso ?? 0;
-            $id_paralelo = $valor->id_paralelo ?? 0;
-            $id_coordinador = $valor->id_coordinador ?? 0;
-            $id_periodo_electivo = $valor->id_periodo_electivo ?? 0;
-
-            try {
-                $exists = PlanificacionAcademicaModel::where("id_educacion_global", $id_instituto)
-                            ->where("id_carrera", $id_carrera)
-                            ->where("id_materia", $id_materia)
-                            ->where("id_nivel", $id_curso)
-                            ->where("id_paralelo", $id_paralelo)
-                            ->where("estado", "A")
-                            ->exists();
-
-                if ($exists) {
-                    throw new Exception("Ya existe una planificación académica con los mismos parámetros.");
+            $duplicates = [];
+            foreach ($info_request as $valor) {
+                $valor = (object)$valor;    
+                $id_instituto = $valor->id_instituto ?? 0;
+                $id_carrera = $valor->id_carrera ?? 0;
+                $id_materia = $valor->id_materia ?? 0;
+                $id_curso = $valor->id_curso ?? 0;
+                $id_paralelo = $valor->id_paralelo ?? 0;
+                $id_coordinador = $valor->id_coordinador ?? 0;
+                $id_periodo_electivo = $valor->id_periodo_electivo ?? 0;
+                
+                try {
+                    $exists = PlanificacionAcademicaModel::where("id_educacion_global", $id_instituto)
+                                ->where("id_carrera", $id_carrera)
+                                ->where("id_materia", $id_materia)
+                                ->where("id_nivel", $id_curso)
+                                ->where("id_paralelo", $id_paralelo)
+                                ->where("estado", "A")
+                                ->exists();
+    
+                    if ($exists) {
+                        throw new Exception("Ya existe una planificación académica con los mismos parámetros.");
                 }
 
                 // Código para crear la nueva planificación académica...
@@ -75,7 +75,7 @@ class PlanificacionAcademica extends Controller
                 "coordinador_carrera" => $valor->id_coordinador,
                 "id_periodo_academico" => $valor->id_periodo_electivo,
                 "ip_creacion" => $request->ip(),
-                "ip_actualizacion" => $request->ip(),
+                "ip_actualizacion" => $request->ip(),   
                 "id_usuario_creador" => 1,
                 "id_usuario_actualizo" => 1,
                 "fecha_creacion" => Carbon::now(),
@@ -87,20 +87,18 @@ class PlanificacionAcademica extends Controller
         Log::info("Planificación creada con éxito");
         return response()->json([
             "ok" => true,
-            "message" => "Planificación creada con éxito"
-        ], 200);
-    } catch (Exception $e) {
+            "message" => "Planificacion creada con exito"
+        ],200); 
+    }catch(Exception $e){
         Log::error(__FILE__ ." > ". __FUNCTION__);
         Log::error($e->getMessage());
         Log::error($e->getLine());
         return response()->json([
-            "ok" => false,
-            "message" => $e->getMessage()
-        ], 500);
+                "ok" => false,
+                "message" => $e->getMessage()
+            ],500); 
+        }
     }
-}
-
-
 
     public function getPlanificacionAcademica(){
         try{
@@ -160,7 +158,7 @@ class PlanificacionAcademica extends Controller
                                 "paralelo" => $arreglos["paralelo"]
                             ];
                     })->toArray());
-
+                    
                     $retorna_arreglo->push($extras);
                 }
                 return [
@@ -173,7 +171,7 @@ class PlanificacionAcademica extends Controller
                     "fecha_ultima_actualizacion" => $info->fecha_ultima_actualizacion,
                 ];
             });
-
+            
             return Response()->json([
                 "ok" => true,
                 "data" => $response_data
@@ -184,7 +182,7 @@ class PlanificacionAcademica extends Controller
             log::error($e->getLine());
             return Response()->json([
                 "ok" => false,
-                "data" => "Error interno en el servidor "
+                "data" => "Error interno en el servidor " 
             ],500);
         }
     }

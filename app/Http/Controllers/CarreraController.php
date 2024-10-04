@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Http\Responses\TypeResponse;
 use App\Models\CarreraModel;
+use App\Models\JornadaModel;
 use App\Services\Validaciones;
 use Exception;
 use Illuminate\Http\Request;
@@ -13,43 +14,60 @@ class CarreraController extends Controller
 {
 
     public function storeCarrera(Request $request)
-    {
-        try{
-            
-            $modelo = new CarreraModel();
-            $campos_requeridos = $modelo->getFillable();
-            $campos_recibidos = array_keys($request->all());
-            $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+{
+    try{
+        // Validar los campos obligatorios
+        $modelo = new CarreraModel();
+        $campos_requeridos = $modelo->getFillable();
+        $campos_recibidos = array_keys($request->all());
+        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
         
-            if (!empty(array_diff($campos_requeridos, $campos_recibidos))) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-                ], 400);
-            }
-            
-            $modelo->nombre = $request->nombre;
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->estado = "A";
-            $modelo->save();
-            return Response()->json([
-                "ok" => true,
-                "message" => "Carrera creada con exito"
-            ], 200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
+        if (!empty($campos_faltantes)) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
+            ], 400);
         }
+
+        // Verificar si la combinación de carrera y jornada ya existe
+        $carreraExistente = CarreraModel::where('nombre', ucfirst(trim($request->nombre)))
+            ->where('id_jornada', $request->id_jornada)
+            ->where('estado', 'A')
+            ->first();
+
+        if ($carreraExistente) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La carrera '" . $request->nombre . "' ya está registrada en la jornada seleccionada."
+            ], 400);
+        }
+        
+        // Crear la nueva carrera
+        $modelo->nombre = ucfirst(trim($request->nombre));  // Asegúrate de capitalizar el nombre
+        $modelo->id_jornada = $request->id_jornada;
+        $modelo->ip_creacion = $request->ip();
+        $modelo->ip_actualizacion = $request->ip();
+        $modelo->id_usuario_creador = auth()->id() ?? 1;
+        $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+        $modelo->estado = "A";
+        $modelo->save();
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Carrera creada con éxito"
+        ], 200);
+    } catch (Exception $e) {
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
     public function deleteCarrera(Request $request,$id)
     {  
@@ -90,15 +108,18 @@ class CarreraController extends Controller
     public function updateCarrera(Request $request,$id)
     {
         try{
-            $asignatura = CarreraModel::find($id);
-            if(!$asignatura){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El registro no existe con el id $id"
-                ],400);
+            // Buscar la carrera por su ID
+            $carrera = CarreraModel::find($id);
+
+            // Verificar si la carrera existe
+            if (!$carrera) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "La carrera no existe.",
+                ], 404);
             }
             CarreraModel::find($id)->update([
-                "nombre" => isset($request->nombre)?$request->nombre:$asignatura->nombre,
+                "nombre" => isset($request->nombre)?$request->nombre:$carrera->nombre,
                 "id_usuario_actualizo" => auth()->id() ?? 1,
                 "ip_actualizo" => $request->ip(),
                 "estado" => isset($request->estado) ? $request->estado : "A"
@@ -121,22 +142,33 @@ class CarreraController extends Controller
 
     public function showCarrera()
     {
-        try{
-            $asignatura = CarreraModel::select("id_carrera","nombre","estado")->whereIn("estado",["A","I"])->get();
-            return Response()->json([
+        try {
+            $asignatura = CarreraModel::select(
+                "carreras.id_carrera",
+                "carreras.nombre",
+                "jornada.id_jornada",
+                "jornada.descripcion as descripcion_jornada",  // Usamos alias para 'descripcion'
+                "carreras.estado"
+            )
+            ->join('jornada', 'carreras.id_jornada', '=', 'jornada.id_jornada')
+            ->whereIn("carreras.estado", ["A", "I"])
+            ->get();    
+
+            return response()->json([
                 "ok" => true,
                 "data" => $asignatura
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
+            ], 200);
+        } catch (Exception $e) {
+            log::error(__FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Linea : " . $e->getLine());
-            
-            return Response()->json([
+
+            return response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
-            ],500);
+            ], 500);
         }
     }
+
 
 }

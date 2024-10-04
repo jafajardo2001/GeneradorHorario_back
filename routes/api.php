@@ -6,12 +6,14 @@ use App\Http\Controllers\CarreraController;
 use App\Http\Controllers\InstitutoController;
 use App\Http\Controllers\TituloAcademicoController;
 use App\Http\Controllers\NivelController;
+use App\Http\Controllers\JobController;
 use App\Http\Controllers\DiasController;
 use App\Http\Controllers\DistribucionHorario;
 use App\Http\Controllers\ParaleloController;
 use App\Http\Controllers\PlanificacionAcademica;
 use App\Http\Controllers\UsuarioController;
 use App\Http\Controllers\RolController;
+use App\Http\Controllers\JornadaController;
 use App\Http\Middleware\AutenticacionSistema;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Route;
@@ -42,7 +44,9 @@ Route::prefix('istg')->group(
         Route::get("show_data_asignatura/", [AsignaturaController::class, 'showAsignatura']);
         Route::put("update_asignatura/{id}", [AsignaturaController::class, 'updateAsignatura']);
         Route::post("create_asignatura/", [AsignaturaController::class, 'storeAsignatura']);
-        Route::delete("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
+        Route::put("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
+        Route::put("update_estado_asignatura/{id}", [AsignaturaController::class, 'updateEstadoAsignatura']);
+
         //CARRERA
         Route::get("show_carrera/", [CarreraController::class, 'showCarrera']);
         Route::put("update_carrera/{id}", [CarreraController::class, 'updateCarrera']);
@@ -52,21 +56,38 @@ Route::prefix('istg')->group(
         Route::get("show_nivel/", [NivelController::class, 'showNivel']);
         Route::put("update_nivel/{id}", [NivelController::class, 'updateNivel']);
         Route::post("create_nivel/", [NivelController::class, 'storeNivelCarrera']);
-        Route::delete("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
+        Route::put("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
         //PARALELO
         Route::get("showParalelo/", [ParaleloController::class, 'showParalelo']);
         Route::put("update_paralelo/{id}", [ParaleloController::class, 'updateParalelo']);
         Route::post("create_paralelo/", [ParaleloController::class, 'storeParalelo']);
-        Route::delete("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
+        Route::put("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
-        // Route::post("edit_usuario/", [UsuarioController::class, 'editUser']);
-        Route::delete("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        Route::put("updateUsuario/{id}", [UsuarioController::class, 'updateUsuarios']);
+        Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
+        Route::get("show_coordinadorc/", [UsuarioController::class, 'showCoordinadorC']);
+        Route::get("show_coordinador_a/", [UsuarioController::class, 'showCoordinadorA']);
+        Route::get("obtener_docentes_por_carrera/{idCarrera}", [UsuarioController::class, 'obtenerDocentesPorCarrera']);
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
+        Route::get('/usuarios/{id}', [UsuarioController::class, 'show']);
+        //Auth-LoginxUsuario
+        Route::post("auth_login/", [UsuarioController::class, 'login']);
         // //Roles
         Route::get("show_roles/", [RolController::class, 'getRoles']);
         Route::post("create_rol/", [RolController::class, 'storeRol']);
-        Route::delete("delete_rol/", [RolController::class, 'deleteRol']);
+        Route::put("delete_rol/{id}", [RolController::class, 'deleteRol']);
+        Route::put("update_rol/{id}", [RolController::class, 'updateRol']);
+
+        // //Tiempo
+        Route::get("show_jobs/", [JobController::class, 'getJobs']);
+        Route::post("create_job/", [JobController::class, 'storeJob']);
+
+        // //Jornada   
+        Route::get("show_jornada/", [JornadaController::class, 'getJornada']);
+        Route::post("create_jornada/", [JornadaController::class, 'storeJornada']);
+
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
@@ -81,7 +102,7 @@ Route::prefix('istg')->group(
                 Route::post("create_horario/", [DistribucionHorario::class, 'storeHorario']);
                 Route::get("show_dist_horarios/", [DistribucionHorario::class, 'showDistribucion']);
                 Route::put("update_distribucion/{id}", [DistribucionHorario::class, 'updatedistribucion']);
-                Route::delete("delete_distribucion/{id}", [DistribucionHorario::class, 'deleteDistribucion']);
+                Route::put("delete_distribucion/{id}", [DistribucionHorario::class, 'deleteDistribucion']);
             }
         );
         Route::group(
