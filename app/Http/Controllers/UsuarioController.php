@@ -9,6 +9,9 @@ use App\Models\JornadaModel;
 use App\Models\UsuarioModel;
 use App\Services\MensajeAlertasServicio;
 use Exception;
+use App\Models\DistribucionHorario;
+use Illuminate\Support\Facades\DB;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
@@ -144,60 +147,61 @@ class UsuarioController extends Controller
 
     // Ejemplo de endpoint en Laravel
     public function obtenerDocentesPorCarrera($idCarrera)
-    {
-        try {
-            // Obtener el ID del rol "Docente"
-            $rolDocente = RolModel::select('id_rol')
-                ->where('descripcion', '=', 'Docente')
-                ->first();
+{
+    try {
+        // Obtener el ID del rol "Docente"
+        $rolDocente = RolModel::select('id_rol')
+            ->where('descripcion', '=', 'Docente')
+            ->first();
 
-            if (!$rolDocente) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Rol Docente no encontrado"
-                ], 404);
-            }
-
-            // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
-            $docentes = UsuarioModel::select(
-                "usuarios.id_usuario",
-                "usuarios.nombres",
-                "usuarios.apellidos",
-                "usuarios.cedula",
-                "usuarios.correo",  // Agregar correo
-                "usuarios.telefono",  // Agregar teléfono
-                UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
-                "titulo_academico.descripcion as titulo_academico" // Título académico
-            )
-            ->join('usuario_carrera', 'usuarios.id_usuario', '=', 'usuario_carrera.id_usuario')  // Unir con la tabla de usuario_carrera
-            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
-            ->where('usuario_carrera.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
-            ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
-            ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
-            ->get();
-
-            // Validar si no se encontraron docentes
-            if ($docentes->isEmpty()) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "No se encontraron docentes para esta carrera"
-                ], 404);
-            }
-
-            // Retornar los docentes en formato JSON
-            return response()->json([
-                "ok" => true,
-                "data" => $docentes
-            ], 200);
-
-        } catch (\Exception $e) {
-            // Manejo de errores
+        if (!$rolDocente) {
             return response()->json([
                 "ok" => false,
-                "message" => "Error en el servidor"
-            ], 500);
+                "message" => "Rol Docente no encontrado"
+            ], 404);
         }
+
+        // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
+        $docentes = UsuarioModel::select(
+            "usuarios.id_usuario",
+            "usuarios.nombres",
+            "usuarios.apellidos",
+            "usuarios.cedula",
+            "usuarios.correo",  // Agregar correo
+            "usuarios.telefono",  // Agregar teléfono
+            UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
+            "titulo_academico.descripcion as titulo_academico" // Título académico
+        )
+        ->join('usuario_carrera_jornada', 'usuarios.id_usuario', '=', 'usuario_carrera_jornada.id_usuario')  // Unir con la tabla de usuario_carrera_jornada
+        ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
+        ->where('usuario_carrera_jornada.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
+        ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
+        ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
+        ->get();
+
+        // Validar si no se encontraron docentes
+        if ($docentes->isEmpty()) {
+            return response()->json([
+                "ok" => false,
+                "message" => "No se encontraron docentes para esta carrera"
+            ], 404);
+        }
+
+        // Retornar los docentes en formato JSON
+        return response()->json([
+            "ok" => true,
+            "data" => $docentes
+        ], 200);
+
+    } catch (\Exception $e) {
+        // Manejo de errores
+        return response()->json([
+            "ok" => false,
+            "message" => "Error en el servidor"
+        ], 500);
     }
+}
+
 
     
 
@@ -561,6 +565,13 @@ class UsuarioController extends Controller
         $usuarioExistente->save();
         Log::info('Datos de usuario actualizados exitosamente.');
 
+        // Obtener las carreras actuales del usuario antes de la actualización
+        $carrerasActuales = $usuarioExistente->carreras()
+            ->select('usuario_carrera_jornada.id_carrera') // Solución al error de ambigüedad
+            ->pluck('usuario_carrera_jornada.id_carrera')
+            ->toArray();
+        Log::info('Usuario encontrado para actualización.', ['carrerasActuales' => $carrerasActuales]);
+
         // Actualizar las carreras y jornadas del usuario
         if (is_array($request->carreras_jornadas)) {
             // Preparar los datos para sync
@@ -573,6 +584,20 @@ class UsuarioController extends Controller
             Log::info('Carreras y jornadas actualizadas exitosamente.');
         }
 
+        // Obtener las carreras eliminadas (las que estaban antes y ya no están ahora)
+        $carrerasNuevas = collect($request->carreras_jornadas)->pluck('id_carrera')->toArray();
+        $carrerasEliminadas = array_diff($carrerasActuales, $carrerasNuevas);
+        Log::info('carrerasEliminadas   .', ['carrerasEliminadas' => $carrerasEliminadas]);
+
+                    // Verificar si se eliminó alguna carrera y actualizar su estado en la tabla de distribución
+            if (!empty($carrerasEliminadas)) {
+                DB::table('distribuciones_horario_academica') // Cambiado a DB::table()
+                    ->where('id_usuario', $id)
+                    ->whereIn('id_carrera', $carrerasEliminadas)
+                    ->update(['estado' => 'I']); // Cambiar estado a inactivo ('I')
+                Log::info('Carreras eliminadas actualizadas a estado inactivo. use of unknown class: App Http Controllers DB');
+            }
+
         return response()->json([
             "ok" => true,
             "message" => "Usuario actualizado exitosamente",
@@ -584,7 +609,7 @@ class UsuarioController extends Controller
             "ok" => false,
             "message" => "Usuario no encontrado"
         ], 404);
-        
+
     } catch (Exception $e) {
         Log::error(__FILE__ . " > " . __FUNCTION__);
         Log::error("Mensaje : " . $e->getMessage());
@@ -596,6 +621,9 @@ class UsuarioController extends Controller
         ], 500);
     }
 }
+
+
+
 
     
 
