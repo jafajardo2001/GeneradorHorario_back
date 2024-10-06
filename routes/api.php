@@ -65,7 +65,9 @@ Route::prefix('istg')->group(
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
         Route::put("updateUsuario/{id}", [UsuarioController::class, 'updateUsuarios']);
-        Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        // Ruta para eliminar una carrera del usuario
+        Route::put('eliminarCarrera/{id}', [UsuarioController::class, 'eliminarCarrera']);
+        Route::put("delete_usuario/{userToDelete}", [UsuarioController::class, 'deleteUsuario']);
         Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
         Route::get("show_coordinadorc/", [UsuarioController::class, 'showCoordinadorC']);
         Route::get("show_coordinador_a/", [UsuarioController::class, 'showCoordinadorA']);

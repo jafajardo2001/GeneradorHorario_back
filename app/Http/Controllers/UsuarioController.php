@@ -502,38 +502,62 @@ class UsuarioController extends Controller
         }
     }
 
-    public function deleteUsuario(Request $request,$id)
-    {
-        try{
-            $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
-            $usuario = UsuarioModel::find($id);
-            if(!$usuario){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El usuario con id  $request->id_rol no existe"
-                ], 400);
-            }
-            $usuario->update([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id(),
-                "ip_actualizo" => $request->ip(),
-            ]);
+    public function deleteUsuario(Request $request, $userToDelete)
+{
+    try {
+        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+        
+        $usuario = UsuarioModel::find($userToDelete);
 
+        if (!$usuario) {
             return Response()->json([
-                "ok" => true,
-                "data" => "Usuario eliminado con exito"
-            ], 200);
-        }catch (Exception $e) {
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
+                "ok" => false, // Cambiado a false para indicar que la operación no fue exitosa
+                "message" => "El usuario con id $userToDelete no existe"
+            ], 400);
         }
+
+        // Cambiar el estado del usuario a "E"
+        $usuario->update([
+            "estado" => "E",
+            "id_usuario_creador" => auth()->id() ?? 1,
+            "ip_actualizacion" => $request->ip(),
+            "fecha_actualizacion" => now(), 
+        ]);
+
+        // Obtener las carreras del usuario
+        $carreras = $usuario->carreras()->pluck('usuario_carrera_jornada.id_carrera'); // Asumiendo que tienes la relación configurada
+
+        if ($carreras->isNotEmpty()) {
+            // Eliminar carreras asociadas
+            DB::table('usuario_carrera_jornada')
+                ->where('usuario_carrera_jornada.id_usuario', $userToDelete)
+                ->whereIn('usuario_carrera_jornada.id_carrera', $carreras)
+                ->delete();
+
+            // Cambiar el estado de las carreras en distribuciones_horario_academica
+            DB::table('distribuciones_horario_academica')
+                ->where('id_usuario', $userToDelete)
+                ->whereIn('id_carrera', $carreras)
+                ->update(['estado' => 'I']);
+        }
+
+        return Response()->json([
+            "ok" => true,
+            "data" => "Usuario eliminado con éxito"
+        ], 200);
+        
+    } catch (Exception $e) {
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Linea : " . $e->getLine());
+
+        return Response()->json([
+            "ok" => false, // Cambiado a false para indicar que ocurrió un error
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
 
     public function updateUsuarios(Request $request, $id)
@@ -567,10 +591,10 @@ class UsuarioController extends Controller
 
         // Obtener las carreras actuales del usuario antes de la actualización
         $carrerasActuales = $usuarioExistente->carreras()
-            ->select('usuario_carrera_jornada.id_carrera') // Solución al error de ambigüedad
+            ->select('usuario_carrera_jornada.id_carrera')
             ->pluck('usuario_carrera_jornada.id_carrera')
             ->toArray();
-        Log::info('Usuario encontrado para actualización.', ['carrerasActuales' => $carrerasActuales]);
+        Log::info('Carreras actuales del usuario.', ['carrerasActuales' => $carrerasActuales]);
 
         // Actualizar las carreras y jornadas del usuario
         if (is_array($request->carreras_jornadas)) {
@@ -584,20 +608,6 @@ class UsuarioController extends Controller
             Log::info('Carreras y jornadas actualizadas exitosamente.');
         }
 
-        // Obtener las carreras eliminadas (las que estaban antes y ya no están ahora)
-        $carrerasNuevas = collect($request->carreras_jornadas)->pluck('id_carrera')->toArray();
-        $carrerasEliminadas = array_diff($carrerasActuales, $carrerasNuevas);
-        Log::info('carrerasEliminadas   .', ['carrerasEliminadas' => $carrerasEliminadas]);
-
-                    // Verificar si se eliminó alguna carrera y actualizar su estado en la tabla de distribución
-            if (!empty($carrerasEliminadas)) {
-                DB::table('distribuciones_horario_academica') // Cambiado a DB::table()
-                    ->where('id_usuario', $id)
-                    ->whereIn('id_carrera', $carrerasEliminadas)
-                    ->update(['estado' => 'I']); // Cambiar estado a inactivo ('I')
-                Log::info('Carreras eliminadas actualizadas a estado inactivo. use of unknown class: App Http Controllers DB');
-            }
-
         return response()->json([
             "ok" => true,
             "message" => "Usuario actualizado exitosamente",
@@ -610,6 +620,51 @@ class UsuarioController extends Controller
             "message" => "Usuario no encontrado"
         ], 404);
 
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
+
+public function eliminarCarrera(Request $request, $id)
+{
+    try {
+        $usuarioExistente = UsuarioModel::findOrFail($id);
+        Log::info('Usuario encontrado para actualización.', ['usuarioExistente' => $usuarioExistente]);
+
+       // Verificar si la carrera está asignada al usuario
+        if (!$usuarioExistente->carreras()->where('usuario_carrera_jornada.id_carrera', $request->id_carrera)->exists()) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La carrera no está asignada al usuario."
+            ], 400);
+        }
+
+        $usuarioExistente->carreras()->detach($request->id_carrera);
+        Log::info("Carrera {$request->id_carrera} eliminada del usuario {$id}.");
+
+        DB::table('distribuciones_horario_academica')
+            ->where('distribuciones_horario_academica.id_usuario', $id)
+            ->where('distribuciones_horario_academica.id_carrera', $request->id_carrera) // Cambiado aquí
+            ->update(['estado' => 'E']);
+        Log::info("Distribución de carrera {$request->id_carrera} para el usuario {$id} actualizada a estado inactivo.");
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Carrera eliminada exitosamente del usuario."
+        ], 200);
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            "ok" => false,
+            "message" => "Usuario o carrera no encontrados."
+        ], 404);
     } catch (Exception $e) {
         Log::error(__FILE__ . " > " . __FUNCTION__);
         Log::error("Mensaje : " . $e->getMessage());
