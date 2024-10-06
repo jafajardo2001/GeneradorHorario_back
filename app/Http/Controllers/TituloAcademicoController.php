@@ -115,35 +115,37 @@ class TituloAcademicoController extends Controller
         }
     }
 
-    public function delete(Request $request)
+    public function deleteTituloAcademico(Request $request, $id)
     {
-        try{
-            $id = $request->input('id') ?? null;
-            if(!$id){
-                return Response()->json([
+        try {
+            $titulo = TituloAcademicoModel::find($id);
+            
+            if (!$titulo) {
+                return response()->json([
                     "ok" => false,
                     "mensaje" => "Error falta el parametro del id"
                 ],404);
             }
-            $modelo = TituloAcademicoModel::find($id);
-            if(!$modelo){
-                return Response()->json([   
-                    "ok" => false,
-                    "mensaje" => "Error el registro no existe"
-                ],404);
-            }
-            $modelo = TituloAcademicoModel::find($id)->update([
-                "estado" => "E",
-                "id_usuario_actualizo"  => auth()->id() ?? 1,
-                "fecha_actualizacion" => Carbon::now()
-            ]);
-        }catch(Exception $e){
-            return Response()->json([
+             // Actualizar el estado a "E" para indicar que se ha eliminado
+        $titulo->update([
+            "estado" => "E", // "E" para eliminado
+            "id_usuario_actualizo" => auth()->id() ?? 1,
+            "ip_actualizo" => $request->ip(),
+            "fecha_actualizacion" => now(),
+        ]);
+            return response()->json([
+                "ok" => true,
+                "message" => "Título académico eliminado con éxito"
+            ], 200);
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Linea : " . $e->getLine());
+            return response()->json([
                 "ok" => false,
-                "mensaje" => "Error interno en el servidor"
-            ],505);
-        }finally{
-            return Response()->json([],202);
+                "message" => "Error interno en el servidor"
+            ], 500);
         }
     }
+    
 }

@@ -87,13 +87,16 @@ Route::prefix('istg')->group(
         // //Jornada   
         Route::get("show_jornada/", [JornadaController::class, 'getJornada']);
         Route::post("create_jornada/", [JornadaController::class, 'storeJornada']);
+        Route::put("delete_jornada/{id}", [JornadaController::class, 'deleteJornada']);
+        Route::put("update_jornada/{id}", [JornadaController::class, 'updateJornada']);
 
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
-        Route::delete("delete_titulo_academico/{id}", [TituloAcademicoController::class, 'deleteTituloAcademico']);
-        // TITULO ACADEMICO
+        Route::put("delete_titulo_academico/{id}", [TituloAcademicoController::class, 'deleteTituloAcademico']);
         Route::get("show_data_titulo_academico/", [TituloAcademicoController::class, 'getTituloAcademico']);
+        
+        // distribucion
         Route::group(
             [
                 "prefix" => "horario/",

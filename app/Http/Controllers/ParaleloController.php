@@ -15,20 +15,37 @@ class ParaleloController extends Controller
 {
     public function storeParalelo(Request $request)
     {
-        try{
-            
-            $modelo = new ParaleloModel();
-           
+        try {
+            // Validar que el campo 'paralelo' esté presente
+            $request->validate([
+                'paralelo' => 'required|string|max:255', // Ajusta la validación según tus requisitos
+            ]);
 
-            // Validar si el paralelo ya existe
+            // Buscar si el paralelo ya existe (sin importar el estado)
             $paraleloExistente = ParaleloModel::where('paralelo', $request->paralelo)->first();
+            // Si el paralelo existe y está inactivo, lo activamos
             if ($paraleloExistente) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "El paralelo ya existe"
-                ], 400);
+                if ($paraleloExistente->estado === 'E') {
+                    $paraleloExistente->update([
+                        'estado' => 'A',
+                        'ip_actualizacion' => $request->ip(),
+                        'id_usuario_actualizo' => auth()->id() ?? 1
+                    ]);
+                    return response()->json([
+                        "ok" => true,
+                        "message" => "Paralelo actualizado con éxito"
+                    ], 200);
+                } else {
+                    // Si ya está activo, retornamos un mensaje de error
+                    return response()->json([
+                        "ok" => false,
+                        "message" => "El paralelo ya existe"
+                    ], 400);
+                }
             }
             
+            // Si no existe, crear un nuevo paralelo
+            $modelo = new ParaleloModel();
             $modelo->paralelo = $request->paralelo;
             $modelo->ip_creacion = $request->ip();
             $modelo->ip_actualizacion = $request->ip();
@@ -36,18 +53,18 @@ class ParaleloController extends Controller
             $modelo->id_usuario_actualizo = auth()->id() ?? 1;
             $modelo->estado = "A";
             $modelo->save();
-            return Response()->json([
+            return response()->json([
                 "ok" => true,
-                "message" => "Paralelo creado Exitosamente"
+                "message" => "Paralelo creado exitosamente."
             ], 200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
+        } catch (Exception $e) {
+            // Manejar cualquier excepción
+            log::error(__FILE__ . " > " . __FUNCTION__);
+            log::error("Mensaje: " . $e->getMessage());
+            log::error("Línea: " . $e->getLine());
+            return response()->json([
+                "ok" => false,
+                "message" => "Error interno en el servidor."
             ], 500);
         }
     }
@@ -112,37 +129,38 @@ class ParaleloController extends Controller
         }
     }
 
-    public function updateParalelo(Request $request,$id)
+    public function updateParalelo(Request $request, $id)
     {
-        try{
-            $insituto = ParaleloModel::find($id);
+        try {
+            // Buscar el paralelo por el id proporcionado
+            $paralelo = ParaleloModel::find($id);
 
-            if ($insituto) {
-                return Response()->json(
-                    [
-                        "ok" => true,
-                        "message" => "No existe un paralelo con el id $id"
-                    ],400
-                );
+
+            if (!$paralelo) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "El registro no existe con el id $id"
+                ], 400);
             }
 
-            $modelo = ParaleloModel::where("id_insituto", $id)->update([
-                "paralelo" => $request->paralelo,
+             // Actualizar los campos del paralelo con los datos proporcionados, si están presentes
+             ParaleloModel::find($id)->update([
+                "paralelo" => isset($request->paralelo) ? $request->paralelo : $paralelo->paralelo,
                 "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
+                "ip_actualizacion" => $request->ip(),
                 "estado" => isset($request->estado) ? $request->estado : "A"
             ]);
 
 
-            return Response()->json([
-                "ok" => true,
-                "message" => "Paralelo actualizado con exito"
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-            
+              // Respuesta exitosa
+            return response()->json([
+                "message" => "Paralelo actualizado con éxito"
+            ], 200);
+        } catch (\Exception $e) {
+            // Manejar cualquier excepción y registrar el error
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje: " . $e->getMessage());
+            Log::error("Línea: " . $e->getLine());
             return Response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
