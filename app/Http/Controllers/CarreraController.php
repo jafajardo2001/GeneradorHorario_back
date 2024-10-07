@@ -122,10 +122,10 @@ class CarreraController extends Controller
         // Actualizar la carrera con la nueva información
         CarreraModel::find($id)->update([
             "nombre" => isset($request->nombre) ? $request->nombre : $carrera->nombre,
-            "id_usuario_actualizo" => auth()->id() ?? 1,
             "id_jornada" => $request->id_jornada ?? $carrera->id_jornada,
-            "ip_actualizo" => $request->ip(),
-            "estado" => isset($request->estado) ? $request->estado : "A"
+            "id_usuario_creador" => auth()->id() ?? 1,
+            "ip_actualizacion" => $request->ip(),
+            "fecha_actualizacion" => now(),
         ]);
 
         // Verificar si hay un registro en la tabla usuario_carrera_jornada

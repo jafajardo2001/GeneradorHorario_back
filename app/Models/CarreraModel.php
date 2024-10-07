@@ -15,7 +15,12 @@ class CarreraModel extends Model
     const UPDATED_AT = "fecha_actualizacion";
     
     protected $fillable = ['nombre',
-    'id_jornada'];
+    'id_jornada','ip_creacion',
+        'ip_actualizacion',
+        'id_usuario_creador',
+        'id_usuario_actualizo',
+        'fecha_creacion',
+        'fecha_actualizacion',];
 
     public function jornada()
     {
