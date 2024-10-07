@@ -39,14 +39,13 @@ class TituloAcademicoController extends Controller
     public function storeTituloAcademico(Request $request)
     {
         try {
-            log::info("Petición entrante " . __FILE__ . " -> " . __FUNCTION__ . " ip " . request_ip::ip());
-
-            if (!$request->input('descripcion')) {
-                log::alert(__FILE__ . " -> " . __FUNCTION__ . " el parámetro descripción es obligatorio");
-                return response()->json([
+            log::info("Peticion entrante " . __FILE__ ." -> ". __FUNCTION__ . " ip " . request_ip::ip());
+            if(!$request->input('descripcion')){
+                log::alert(__FILE__ . " -> " . __FUNCTION__ . " el parametro descripcion es obligatorio");
+                return Response()->json([
                     "ok" => false,
-                    "mensaje" => "Hace falta el parámetro descripción"
-                ], 400);
+                    "mensaje" => "Hace falta el parametro descripcion"
+                ],404);
             }
 
             // Validar si el título académico ya existe
@@ -65,23 +64,22 @@ class TituloAcademicoController extends Controller
             $modelo->id_usuario_creador = auth()->id() ?? 1;
             $modelo->fecha_creacion = Carbon::now();
             $modelo->save();
-
-            log::info("Operación realizada con éxito");
-            return response()->json([
-                "ok" => true,
-                "mensaje" => "Título académico creado con éxito"
-            ], 201);
-
-        } catch (Exception $e) {
+            
+        }catch(Exception $e){
             log::error(__FILE__ . __FUNCTION__ . " MENSAJE => " . $e->getMessage());
-            return response()->json([
+            return Response()->json([
                 "ok" => false,
                 "mensaje" => "Error interno en el servidor"
-            ], 500);
+            ],505);
+        }finally{
+            log::info("Operacion realizada con exito");
+            return Response()->json([
+                "ok" => true,
+                "mensaje" => "Operacion realizada con exito"
+            ],202);
         }
+        
     }
-
-
 
 
     public function updateTituloAcademico(Request $request,$id){
@@ -89,7 +87,7 @@ class TituloAcademicoController extends Controller
             log::info("Peticion entrante " . __FILE__ ." -> ". __FUNCTION__ . " ip " . request_ip::ip());
             $modelo = TituloAcademicoModel::find($id);
             if(!$modelo){
-                return Response()->json([
+                return Response()->json([   
                     "ok" => false,
                     "mensaje" => "Error el registro no existe"
                 ],404);
@@ -117,35 +115,37 @@ class TituloAcademicoController extends Controller
         }
     }
 
-    public function delete(Request $request)
+    public function deleteTituloAcademico(Request $request, $id)
     {
-        try{
-            $id = $request->input('id') ?? null;
-            if(!$id){
-                return Response()->json([
+        try {
+            $titulo = TituloAcademicoModel::find($id);
+            
+            if (!$titulo) {
+                return response()->json([
                     "ok" => false,
                     "mensaje" => "Error falta el parametro del id"
                 ],404);
             }
-            $modelo = TituloAcademicoModel::find($id);
-            if(!$modelo){
-                return Response()->json([
-                    "ok" => false,
-                    "mensaje" => "Error el registro no existe"
-                ],404);
-            }
-            $modelo = TituloAcademicoModel::find($id)->update([
-                "estado" => "E",
-                "id_usuario_actualizo"  => auth()->id() ?? 1,
-                "fecha_actualizacion" => Carbon::now()
-            ]);
-        }catch(Exception $e){
-            return Response()->json([
+             // Actualizar el estado a "E" para indicar que se ha eliminado
+        $titulo->update([
+            "estado" => "E", // "E" para eliminado
+            "id_usuario_actualizo" => auth()->id() ?? 1,
+            "ip_actualizo" => $request->ip(),
+            "fecha_actualizacion" => now(),
+        ]);
+            return response()->json([
+                "ok" => true,
+                "message" => "Título académico eliminado con éxito"
+            ], 200);
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Linea : " . $e->getLine());
+            return response()->json([
                 "ok" => false,
-                "mensaje" => "Error interno en el servidor"
-            ],505);
-        }finally{
-            return Response()->json([],202);
+                "message" => "Error interno en el servidor"
+            ], 500);
         }
     }
+    
 }

@@ -21,11 +21,14 @@ class UsuarioModel extends Model
         'cedula',
         'nombres',
         'apellidos',
-        
+        "id_usuario_creador",
+        "ip_actualizacion",
+        "fecha_actualizacion",
         'correo',
         'telefono',
         'id_rol',
         'id_job',
+        'estado',
         'id_titulo_academico'
         
 

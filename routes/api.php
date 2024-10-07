@@ -65,7 +65,9 @@ Route::prefix('istg')->group(
         //USUARIO
         Route::post("create_usuario/", [UsuarioController::class, 'storeUsuarios']);
         Route::put("updateUsuario/{id}", [UsuarioController::class, 'updateUsuarios']);
-        Route::put("delete_usuario/{id}", [UsuarioController::class, 'deleteUsuario']);
+        // Ruta para eliminar una carrera del usuario
+        Route::put('eliminarCarrera/{id}', [UsuarioController::class, 'eliminarCarrera']);
+        Route::put("delete_usuario/{userToDelete}", [UsuarioController::class, 'deleteUsuario']);
         Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
         Route::get("show_coordinadorc/", [UsuarioController::class, 'showCoordinadorC']);
         Route::get("show_coordinador_a/", [UsuarioController::class, 'showCoordinadorA']);
@@ -87,13 +89,16 @@ Route::prefix('istg')->group(
         // //Jornada   
         Route::get("show_jornada/", [JornadaController::class, 'getJornada']);
         Route::post("create_jornada/", [JornadaController::class, 'storeJornada']);
+        Route::put("delete_jornada/{id}", [JornadaController::class, 'deleteJornada']);
+        Route::put("update_jornada/{id}", [JornadaController::class, 'updateJornada']);
 
         // //TITUTLOS ACADEMICO
         Route::post("create_titulo_academico/", [TituloAcademicoController::class, 'storeTituloAcademico']);
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
-        Route::delete("delete_titulo_academico/{id}", [TituloAcademicoController::class, 'deleteTituloAcademico']);
-        // TITULO ACADEMICO
+        Route::put("delete_titulo_academico/{id}", [TituloAcademicoController::class, 'deleteTituloAcademico']);
         Route::get("show_data_titulo_academico/", [TituloAcademicoController::class, 'getTituloAcademico']);
+        
+        // distribucion
         Route::group(
             [
                 "prefix" => "horario/",

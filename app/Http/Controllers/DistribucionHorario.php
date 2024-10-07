@@ -172,13 +172,14 @@ class DistribucionHorario extends Controller
             "distribuciones_horario_academica.hora_inicio",
             "distribuciones_horario_academica.hora_termina",
             "distribuciones_horario_academica.fecha_actualizacion",
-            DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente"), // Combina nombre y apellido
+            DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente"),
             "usuarios.cedula as cedula_docente",
             "usuarios.correo as correo_docente",
             "usuarios.telefono as telefono_docente",
-            "titulo_academico.descripcion as titulo_academico_docente", // Obtiene la descripción del título académico
+            "titulo_academico.descripcion as titulo_academico_docente",
             "job.id_job",
-            "job.descripcion as job_descripcion" // Obtiene la descripción del job
+            "job.descripcion as job_descripcion",
+            "jornada.descripcion as jornada_descripcion" // Nueva columna seleccionada
         )
         ->join("educacion_global", "distribuciones_horario_academica.id_educacion_global", "=", "educacion_global.id_educacion_global")
         ->join("carreras", "distribuciones_horario_academica.id_carrera", "=", "carreras.id_carrera")
@@ -188,12 +189,13 @@ class DistribucionHorario extends Controller
         ->join("usuarios", "distribuciones_horario_academica.id_usuario", "=", "usuarios.id_usuario")
         ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
         ->join("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
-        ->leftJoin("job", "usuarios.id_job", "=", "job.id_job") // Join para obtener la descripción del job
+        ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")
+        ->join("jornada", "carreras.id_jornada", "=", "jornada.id_jornada") // Nuevo JOIN con jornada
         ->where("rol.descripcion", "=", "Docente")
-        ->where("distribuciones_horario_academica.estado", "=", "A") // Filtro para estado "A"
+        ->where("distribuciones_horario_academica.estado", "=", "A")
         ->orderBy("distribuciones_horario_academica.dia")
         ->get();
-
+        
         return response()->json([
             "ok" => true,
             "data" => $data
@@ -211,6 +213,7 @@ class DistribucionHorario extends Controller
         ], 500);
     }
 }
+
 
 // App/Http/Controllers/DistribucionHorarioController.php
 

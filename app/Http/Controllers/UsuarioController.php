@@ -9,6 +9,9 @@ use App\Models\JornadaModel;
 use App\Models\UsuarioModel;
 use App\Services\MensajeAlertasServicio;
 use Exception;
+use App\Models\DistribucionHorario;
+use Illuminate\Support\Facades\DB;
+
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Hash;
@@ -30,9 +33,6 @@ class UsuarioController extends Controller
 
         // Validar campos requeridos
         $modelo = new UsuarioModel();
-        $campos_requeridos = $modelo->getFillable();
-        $campos_recibidos = array_keys($request->all());
-        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
 
         if (!empty($campos_faltantes)) {
             return response()->json([
@@ -144,60 +144,61 @@ class UsuarioController extends Controller
 
     // Ejemplo de endpoint en Laravel
     public function obtenerDocentesPorCarrera($idCarrera)
-    {
-        try {
-            // Obtener el ID del rol "Docente"
-            $rolDocente = RolModel::select('id_rol')
-                ->where('descripcion', '=', 'Docente')
-                ->first();
+{
+    try {
+        // Obtener el ID del rol "Docente"
+        $rolDocente = RolModel::select('id_rol')
+            ->where('descripcion', '=', 'Docente')
+            ->first();
 
-            if (!$rolDocente) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "Rol Docente no encontrado"
-                ], 404);
-            }
-
-            // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
-            $docentes = UsuarioModel::select(
-                "usuarios.id_usuario",
-                "usuarios.nombres",
-                "usuarios.apellidos",
-                "usuarios.cedula",
-                "usuarios.correo",  // Agregar correo
-                "usuarios.telefono",  // Agregar teléfono
-                UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
-                "titulo_academico.descripcion as titulo_academico" // Título académico
-            )
-            ->join('usuario_carrera', 'usuarios.id_usuario', '=', 'usuario_carrera.id_usuario')  // Unir con la tabla de usuario_carrera
-            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
-            ->where('usuario_carrera.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
-            ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
-            ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
-            ->get();
-
-            // Validar si no se encontraron docentes
-            if ($docentes->isEmpty()) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "No se encontraron docentes para esta carrera"
-                ], 404);
-            }
-
-            // Retornar los docentes en formato JSON
-            return response()->json([
-                "ok" => true,
-                "data" => $docentes
-            ], 200);
-
-        } catch (\Exception $e) {
-            // Manejo de errores
+        if (!$rolDocente) {
             return response()->json([
                 "ok" => false,
-                "message" => "Error en el servidor"
-            ], 500);
+                "message" => "Rol Docente no encontrado"
+            ], 404);
         }
+
+        // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
+        $docentes = UsuarioModel::select(
+            "usuarios.id_usuario",
+            "usuarios.nombres",
+            "usuarios.apellidos",
+            "usuarios.cedula",
+            "usuarios.correo",  // Agregar correo
+            "usuarios.telefono",  // Agregar teléfono
+            UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
+            "titulo_academico.descripcion as titulo_academico" // Título académico
+        )
+        ->join('usuario_carrera_jornada', 'usuarios.id_usuario', '=', 'usuario_carrera_jornada.id_usuario')  // Unir con la tabla de usuario_carrera_jornada
+        ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
+        ->where('usuario_carrera_jornada.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
+        ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
+        ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
+        ->get();
+
+        // Validar si no se encontraron docentes
+        if ($docentes->isEmpty()) {
+            return response()->json([
+                "ok" => false,
+                "message" => "No se encontraron docentes para esta carrera"
+            ], 404);
+        }
+
+        // Retornar los docentes en formato JSON
+        return response()->json([
+            "ok" => true,
+            "data" => $docentes
+        ], 200);
+
+    } catch (\Exception $e) {
+        // Manejo de errores
+        return response()->json([
+            "ok" => false,
+            "message" => "Error en el servidor"
+        ], 500);
     }
+}
+
 
     
 
@@ -498,38 +499,62 @@ class UsuarioController extends Controller
         }
     }
 
-    public function deleteUsuario(Request $request,$id)
-    {
-        try{
-            $this->servicio_informe->storeInformativoLogs(__FILE__,__FUNCTION__);
-            $usuario = UsuarioModel::find($id);
-            if(!$usuario){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El usuario con id  $request->id_rol no existe"
-                ], 400);
-            }
-            $usuario->update([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id(),
-                "ip_actualizo" => $request->ip(),
-            ]);
+    public function deleteUsuario(Request $request, $userToDelete)
+{
+    try {
+        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+        
+        $usuario = UsuarioModel::find($userToDelete);
 
+        if (!$usuario) {
             return Response()->json([
-                "ok" => true,
-                "data" => "Usuario eliminado con exito"
-            ], 200);
-        }catch (Exception $e) {
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
+                "ok" => false, // Cambiado a false para indicar que la operación no fue exitosa
+                "message" => "El usuario con id $userToDelete no existe"
+            ], 400);
         }
+
+        // Cambiar el estado del usuario a "E"
+        $usuario->update([
+            "estado" => "E",
+            "id_usuario_creador" => auth()->id() ?? 1,
+            "ip_actualizacion" => $request->ip(),
+            "fecha_actualizacion" => now(), 
+        ]);
+
+        // Obtener las carreras del usuario
+        $carreras = $usuario->carreras()->pluck('usuario_carrera_jornada.id_carrera'); // Asumiendo que tienes la relación configurada
+
+        if ($carreras->isNotEmpty()) {
+            // Eliminar carreras asociadas
+            DB::table('usuario_carrera_jornada')
+                ->where('usuario_carrera_jornada.id_usuario', $userToDelete)
+                ->whereIn('usuario_carrera_jornada.id_carrera', $carreras)
+                ->delete();
+
+            // Cambiar el estado de las carreras en distribuciones_horario_academica
+            DB::table('distribuciones_horario_academica')
+                ->where('id_usuario', $userToDelete)
+                ->whereIn('id_carrera', $carreras)
+                ->update(['estado' => 'I']);
+        }
+
+        return Response()->json([
+            "ok" => true,
+            "data" => "Usuario eliminado con éxito"
+        ], 200);
+        
+    } catch (Exception $e) {
+        log::error(__FILE__ . " > " . __FUNCTION__);
+        log::error("Mensaje : " . $e->getMessage());
+        log::error("Linea : " . $e->getLine());
+
+        return Response()->json([
+            "ok" => false, // Cambiado a false para indicar que ocurrió un error
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
 
     public function updateUsuarios(Request $request, $id)
@@ -561,6 +586,13 @@ class UsuarioController extends Controller
         $usuarioExistente->save();
         Log::info('Datos de usuario actualizados exitosamente.');
 
+        // Obtener las carreras actuales del usuario antes de la actualización
+        $carrerasActuales = $usuarioExistente->carreras()
+            ->select('usuario_carrera_jornada.id_carrera')
+            ->pluck('usuario_carrera_jornada.id_carrera')
+            ->toArray();
+        Log::info('Carreras actuales del usuario.', ['carrerasActuales' => $carrerasActuales]);
+
         // Actualizar las carreras y jornadas del usuario
         if (is_array($request->carreras_jornadas)) {
             // Preparar los datos para sync
@@ -584,7 +616,7 @@ class UsuarioController extends Controller
             "ok" => false,
             "message" => "Usuario no encontrado"
         ], 404);
-        
+
     } catch (Exception $e) {
         Log::error(__FILE__ . " > " . __FUNCTION__);
         Log::error("Mensaje : " . $e->getMessage());
@@ -596,6 +628,54 @@ class UsuarioController extends Controller
         ], 500);
     }
 }
+
+
+public function eliminarCarrera(Request $request, $id)
+{
+    try {
+        $usuarioExistente = UsuarioModel::findOrFail($id);
+        Log::info('Usuario encontrado para actualización.', ['usuarioExistente' => $usuarioExistente]);
+
+       // Verificar si la carrera está asignada al usuario
+        if (!$usuarioExistente->carreras()->where('usuario_carrera_jornada.id_carrera', $request->id_carrera)->exists()) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La carrera no está asignada al usuario."
+            ], 400);
+        }
+
+        $usuarioExistente->carreras()->detach($request->id_carrera);
+        Log::info("Carrera {$request->id_carrera} eliminada del usuario {$id}.");
+
+        DB::table('distribuciones_horario_academica')
+            ->where('distribuciones_horario_academica.id_usuario', $id)
+            ->where('distribuciones_horario_academica.id_carrera', $request->id_carrera) // Cambiado aquí
+            ->update(['estado' => 'E']);
+        Log::info("Distribución de carrera {$request->id_carrera} para el usuario {$id} actualizada a estado inactivo.");
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Carrera eliminada exitosamente del usuario."
+        ], 200);
+    } catch (ModelNotFoundException $e) {
+        return response()->json([
+            "ok" => false,
+            "message" => "Usuario o carrera no encontrados."
+        ], 404);
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Línea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
+
+
 
     
 

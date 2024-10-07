@@ -105,40 +105,62 @@ class CarreraController extends Controller
         }   
     }
 
-    public function updateCarrera(Request $request,$id)
-    {
-        try{
-            // Buscar la carrera por su ID
-            $carrera = CarreraModel::find($id);
+    public function updateCarrera(Request $request, $id)
+{
+    try {
+        // Buscar la carrera por su ID
+        $carrera = CarreraModel::find($id);
 
-            // Verificar si la carrera existe
-            if (!$carrera) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "La carrera no existe.",
-                ], 404);
-            }
-            CarreraModel::find($id)->update([
-                "nombre" => isset($request->nombre)?$request->nombre:$carrera->nombre,
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
-                "estado" => isset($request->estado) ? $request->estado : "A"
-            ]);
-            return Response()->json([
-                "ok" => true,
-                "message" => "Carrera actualizada con exito"
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
+        // Verificar si la carrera existe
+        if (!$carrera) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La carrera no existe.",
+            ], 404);
         }
+
+        // Actualizar la carrera con la nueva información
+        CarreraModel::find($id)->update([
+            "nombre" => isset($request->nombre) ? $request->nombre : $carrera->nombre,
+            "id_usuario_actualizo" => auth()->id() ?? 1,
+            "id_jornada" => $request->id_jornada ?? $carrera->id_jornada,
+            "ip_actualizo" => $request->ip(),
+            "estado" => isset($request->estado) ? $request->estado : "A"
+        ]);
+
+        // Verificar si hay un registro en la tabla usuario_carrera_jornada
+        $usuarioCarreraJornada = \DB::table('usuario_carrera_jornada')
+            ->where('id_carrera', $id)
+            ->where('id_jornada', $carrera->id_jornada) // Jornada actual
+            ->first();
+
+        // Si existe un registro, actualizar la id_jornada
+        if ($usuarioCarreraJornada) {
+            \DB::table('usuario_carrera_jornada')
+                ->where('id_carrera', $id)
+                ->where('id_jornada', $carrera->id_jornada) // Jornada actual
+                ->update([
+                    'id_jornada' => $request->id_jornada,
+                    
+                ]);
+        }
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Carrera y jornada actualizadas con éxito"
+        ], 200);
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
     public function showCarrera()
     {
