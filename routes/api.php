@@ -85,6 +85,8 @@ Route::prefix('istg')->group(
         // //Tiempo
         Route::get("show_jobs/", [JobController::class, 'getJobs']);
         Route::post("create_job/", [JobController::class, 'storeJob']);
+        Route::put("update_job/{id}", [JobController::class, 'updateJob']);
+        Route::put("delete_job/{id}", [JobController::class, 'deleteJob']);
 
         // //Jornada   
         Route::get("show_jornada/", [JornadaController::class, 'getJornada']);
