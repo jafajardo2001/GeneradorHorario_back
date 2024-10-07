@@ -26,117 +26,133 @@ class UsuarioController extends Controller
     {
         $this->servicio_informe = new MensajeAlertasServicio();
     }
+
     public function storeUsuarios(Request $request)
-{
-    try {
-        Log::info('Iniciando creación o actualización de usuario.');
+    {
+        try {
+            Log::info('Iniciando creación o actualización de usuario.');
 
-        // Validar campos requeridos
-        $modelo = new UsuarioModel();
+            // Validar campos requeridos (puedes agregar las validaciones que necesites aquí)
+            $modelo = new UsuarioModel();
 
-        if (!empty($campos_faltantes)) {
-            return response()->json([
-                "ok" => false,
-                "message" => "Los siguientes campos son obligatorios: " . implode(', ', $campos_faltantes)
-            ], 400);
-        }
-
-        // Validar que se reciban carreras con sus jornadas
-        if (!$request->has('carreras_jornadas') || !is_array($request->carreras_jornadas)) {
-            return response()->json([
-                "ok" => false,
-                "message" => "Es necesario enviar las carreras con sus respectivas jornadas."
-            ], 400);
-        }
-
-        // Verificar si ya existe el usuario
-        $usuarioExistente = UsuarioModel::where('cedula', $request->cedula)
-            ->where('nombres', $request->nombres)
-            ->where('apellidos', $request->apellidos)
-            ->first();
-
-        Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $usuarioExistente]);
-
-        if ($usuarioExistente) {
-            // Obtener las combinaciones de carrera y jornada existentes del usuario
-            $carrerasExistentes = $usuarioExistente->carreras()
-                ->select('usuario_carrera_jornada.id_carrera', 'usuario_carrera_jornada.id_jornada')
-                ->get()->toArray();
-
-            Log::info('Carreras y jornadas existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
-
-            // Verificar si alguna combinación ya está asignada
-            $carrerasDuplicadas = [];
-            foreach ($request->carreras_jornadas as $cj) {
-                if (in_array(['id_carrera' => $cj['id_carrera'], 'id_jornada' => $cj['id_jornada']], $carrerasExistentes)) {
-                    $carrerasDuplicadas[] = $cj;
+            // Verificar si se necesita validar las carreras y jornadas dependiendo del rol
+            if ($request->id_rol == RolModel::where('descripcion', '=', 'Docente')->first()->id_rol) {
+                // Validar que se reciban carreras con sus jornadas solo para el rol "Docente"
+                if (!$request->has('carreras_jornadas') || !is_array($request->carreras_jornadas)) {
+                    return response()->json([
+                        "ok" => false,
+                        "message" => "Es necesario enviar las carreras con sus respectivas jornadas para el perfil de Docente."
+                    ], 400);
                 }
             }
 
-            Log::info('Carreras duplicadas encontradas.', ['carrerasDuplicadas' => $carrerasDuplicadas]);
+            // Verificar si ya existe el usuario
+            $usuarioExistente = UsuarioModel::where('cedula', $request->cedula)
+                ->where('nombres', $request->nombres)
+                ->where('apellidos', $request->apellidos)
+                ->first();
 
-            if (!empty($carrerasDuplicadas)) {
+            Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $usuarioExistente]);
+
+            if ($usuarioExistente) {
+                // Obtener las combinaciones de carrera y jornada existentes del usuario
+                $carrerasExistentes = $usuarioExistente->carreras()
+                    ->select('usuario_carrera_jornada.id_carrera', 'usuario_carrera_jornada.id_jornada')
+                    ->get()->toArray();
+
+                Log::info('Carreras y jornadas existentes del usuario.', ['carrerasExistentes' => $carrerasExistentes]);
+
+                // Verificar si alguna combinación ya está asignada solo para docentes
+                if ($request->id_rol == RolModel::where('descripcion', '=', 'Docente')->first()->id_rol) {
+                    $carrerasDuplicadas = [];
+                    foreach ($request->carreras_jornadas as $cj) {
+                        if (in_array(['id_carrera' => $cj['id_carrera'], 'id_jornada' => $cj['id_jornada']], $carrerasExistentes)) {
+                            $carrerasDuplicadas[] = $cj;
+                        }
+                    }
+
+                    Log::info('Carreras duplicadas encontradas.', ['carrerasDuplicadas' => $carrerasDuplicadas]);
+
+                    if (!empty($carrerasDuplicadas)) {
+                        return response()->json([
+                            "ok" => false,
+                            "message" => "El usuario ya está inscrito en alguna de las combinaciones de carrera y jornada seleccionadas."
+                        ], 400);
+                    }
+
+                    // Agregar las nuevas combinaciones de carrera y jornada sin duplicar
+                    foreach ($request->carreras_jornadas as $cj) {
+                        $usuarioExistente->carreras()->syncWithoutDetaching([$cj['id_carrera'] => ['id_jornada' => $cj['id_jornada']]]);
+                    }
+
+                    return response()->json([
+                        "ok" => true,
+                        "message" => "Carreras adicionales asignadas exitosamente."
+                    ], 200);
+                }
+
+                if ($request->has('id_job')) {
+                    $modelo->id_job = $request->id_job;
+                }
+
+            } else {
+                Log::info('El usuario no existe, creando uno nuevo.');
+                // Crear un nuevo usuario si no existe
+                $nombres = ucfirst(trim($request->nombres));
+                $apellidos = ucfirst(trim($request->apellidos));
+
+                $modelo->cedula = $request->cedula;
+                $modelo->nombres = $nombres;
+                $modelo->apellidos = $apellidos;
+                $modelo->correo = $request->correo;
+                $modelo->telefono = $request->telefono;
+                $modelo->clave = bcrypt($request->cedula);
+                $modelo->id_rol = $request->id_rol;
+
+                // Asegúrate de que id_job solo se asigna si está presente en la solicitud
+                if ($request->has('id_job')) {
+                    $modelo->id_job = $request->id_job;
+                } else {
+                    // Puedes decidir cómo manejar esto, por ejemplo:
+                    // $modelo->id_job = null; // O eliminar la línea si no es necesario
+                }
+
+                $modelo->id_titulo_academico = $request->id_titulo_academico;
+                $modelo->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
+                $modelo->ip_creacion = $request->ip();
+                $modelo->ip_actualizacion = $request->ip();
+                $modelo->id_usuario_creador = auth()->id() ?? 1;
+                $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+                $modelo->estado = "A";
+                $modelo->save();
+
+                Log::info('Datos del request', ['data' => $request->all()]);
+
+                // Asignar carreras y jornadas al usuario recién creado solo si es "Docente"
+                if ($request->id_rol == RolModel::where('descripcion', '=', 'Docente')->first()->id_rol) {
+                    foreach ($request->carreras_jornadas as $cj) {
+                        // Asegúrate de que la relación esté configurada correctamente
+                        $modelo->carreras()->syncWithoutDetaching([$cj['id_carrera'] => ['id_jornada' => $cj['id_jornada']]]);
+                    }
+                }
+
                 return response()->json([
-                    "ok" => false,
-                    "message" => "El usuario ya está inscrito en alguna de las combinaciones de carrera y jornada seleccionadas."
-                ], 400);
+                    "ok" => true,
+                    "message" => "Usuario creado con éxito y carreras asignadas (si corresponde)."
+                ], 200);
             }
 
-            // Agregar las nuevas combinaciones de carrera y jornada sin duplicar
-            foreach ($request->carreras_jornadas as $cj) {
-                $usuarioExistente->carreras()->syncWithoutDetaching([$cj['id_carrera'] => ['id_jornada' => $cj['id_jornada']]]);
-            }
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Línea : " . $e->getLine());
 
             return response()->json([
-                "ok" => true,
-                "message" => "Carreras adicionales asignadas exitosamente."
-            ], 200);
-        } else {
-            Log::info('El usuario no existe, creando uno nuevo.');
-            // Crear un nuevo usuario si no existe
-            $nombres = ucfirst(trim($request->nombres));
-            $apellidos = ucfirst(trim($request->apellidos));
-
-            $modelo->cedula = $request->cedula;
-            $modelo->nombres = $nombres;
-            $modelo->apellidos = $apellidos;
-            $modelo->correo = $request->correo;
-            $modelo->telefono = $request->telefono;
-            $modelo->clave = bcrypt($request->cedula);
-            $modelo->id_rol = $request->id_rol;
-            $modelo->id_job = $request->id_job;
-            $modelo->id_titulo_academico = $request->id_titulo_academico;
-            $modelo->usuario = strtolower(explode(' ', $nombres)[0] . explode(' ', $apellidos)[0]);
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->estado = "A";
-            $modelo->save();
-
-            // Asignar carreras y jornadas al usuario recién creado
-            foreach ($request->carreras_jornadas as $cj) {
-                // Asegúrate de que la relación esté configurada correctamente
-                $modelo->carreras()->syncWithoutDetaching([$cj['id_carrera'] => ['id_jornada' => $cj['id_jornada']]]);
-            }
-
-            return response()->json([
-                "ok" => true,
-                "message" => "Usuario creado y carreras con jornadas asignadas con éxito."
-            ], 200);
+                "ok" => false,
+                "message" => "Error interno en el servidor"
+            ], 500);
         }
-
-    } catch (Exception $e) {
-        Log::error(__FILE__ . " > " . __FUNCTION__);
-        Log::error("Mensaje : " . $e->getMessage());
-        Log::error("Línea : " . $e->getLine());
-
-        return response()->json([
-            "ok" => false,
-            "message" => "Error interno en el servidor"
-        ], 500);
     }
-}
 
 
 
@@ -144,64 +160,60 @@ class UsuarioController extends Controller
 
     // Ejemplo de endpoint en Laravel
     public function obtenerDocentesPorCarrera($idCarrera)
-{
-    try {
-        // Obtener el ID del rol "Docente"
-        $rolDocente = RolModel::select('id_rol')
-            ->where('descripcion', '=', 'Docente')
-            ->first();
+    {
+        try {
+            // Obtener el ID del rol "Docente"
+            $rolDocente = RolModel::select('id_rol')
+                ->where('descripcion', '=', 'Docente')
+                ->first();
 
-        if (!$rolDocente) {
+            if (!$rolDocente) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Rol Docente no encontrado"
+                ], 404);
+            }
+
+            // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
+            $docentes = UsuarioModel::select(
+                "usuarios.id_usuario",
+                "usuarios.nombres",
+                "usuarios.apellidos",
+                "usuarios.cedula",
+                "usuarios.correo",  // Agregar correo
+                "usuarios.telefono",  // Agregar teléfono
+                UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
+                "titulo_academico.descripcion as titulo_academico" // Título académico
+            )
+            ->join('usuario_carrera_jornada', 'usuarios.id_usuario', '=', 'usuario_carrera_jornada.id_usuario')  // Unir con la tabla de usuario_carrera_jornada
+            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
+            ->where('usuario_carrera_jornada.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
+            ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
+            ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
+            ->get();
+
+            // Validar si no se encontraron docentes
+            if ($docentes->isEmpty()) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "No se encontraron docentes para esta carrera"
+                ], 404);
+            }
+
+            // Retornar los docentes en formato JSON
+            return response()->json([
+                "ok" => true,
+                "data" => $docentes
+            ], 200);
+
+        } catch (\Exception $e) {
+            // Manejo de errores
             return response()->json([
                 "ok" => false,
-                "message" => "Rol Docente no encontrado"
-            ], 404);
+                "message" => "Error en el servidor"
+            ], 500);
         }
-
-        // Obtener los usuarios que tienen el rol de "Docente" y están asociados con la carrera seleccionada
-        $docentes = UsuarioModel::select(
-            "usuarios.id_usuario",
-            "usuarios.nombres",
-            "usuarios.apellidos",
-            "usuarios.cedula",
-            "usuarios.correo",  // Agregar correo
-            "usuarios.telefono",  // Agregar teléfono
-            UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
-            "titulo_academico.descripcion as titulo_academico" // Título académico
-        )
-        ->join('usuario_carrera_jornada', 'usuarios.id_usuario', '=', 'usuario_carrera_jornada.id_usuario')  // Unir con la tabla de usuario_carrera_jornada
-        ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')  // Unir con la tabla de títulos académicos
-        ->where('usuario_carrera_jornada.id_carrera', '=', $idCarrera)  // Filtrar por la carrera seleccionada
-        ->where('usuarios.id_rol', '=', $rolDocente->id_rol)  // Filtrar por el rol Docente
-        ->where('usuarios.estado', '=', 'A')  // Solo usuarios activos
-        ->get();
-
-        // Validar si no se encontraron docentes
-        if ($docentes->isEmpty()) {
-            return response()->json([
-                "ok" => false,
-                "message" => "No se encontraron docentes para esta carrera"
-            ], 404);
-        }
-
-        // Retornar los docentes en formato JSON
-        return response()->json([
-            "ok" => true,
-            "data" => $docentes
-        ], 200);
-
-    } catch (\Exception $e) {
-        // Manejo de errores
-        return response()->json([
-            "ok" => false,
-            "message" => "Error en el servidor"
-        ], 500);
     }
-}
-
-
-    
-
 
 
     public function showUsuarios()
