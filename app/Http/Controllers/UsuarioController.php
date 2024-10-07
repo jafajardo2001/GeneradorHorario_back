@@ -35,6 +35,11 @@ class UsuarioController extends Controller
 <<<<<<< Updated upstream
             // Validar campos requeridos (puedes agregar las validaciones que necesites aquí)
             $modelo = new UsuarioModel();
+=======
+        // Validar campos requeridos
+        $modelo = new UsuarioModel();
+        
+>>>>>>> Stashed changes
 
             // Verificar si se necesita validar las carreras y jornadas dependiendo del rol
             if ($request->id_rol == RolModel::where('descripcion', '=', 'Docente')->first()->id_rol) {
