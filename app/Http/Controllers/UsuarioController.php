@@ -32,6 +32,7 @@ class UsuarioController extends Controller
         try {
             Log::info('Iniciando creación o actualización de usuario.');
 
+<<<<<<< Updated upstream
             // Validar campos requeridos (puedes agregar las validaciones que necesites aquí)
             $modelo = new UsuarioModel();
 
