@@ -33,9 +33,6 @@ class UsuarioController extends Controller
 
         // Validar campos requeridos
         $modelo = new UsuarioModel();
-        $campos_requeridos = $modelo->getFillable();
-        $campos_recibidos = array_keys($request->all());
-        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
 
         if (!empty($campos_faltantes)) {
             return response()->json([
