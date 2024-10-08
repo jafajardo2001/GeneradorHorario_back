@@ -151,6 +151,7 @@ class JornadaController extends Controller
                 ->where('estado', 'A')
                 ->where('id_jornada', '!=', $id) // Excluir el rol actual de la búsqueda
                 ->first();
+                Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $jornadaExistente]);
 
             if ($jornadaExistente) {
                 return response()->json([
@@ -165,6 +166,7 @@ class JornadaController extends Controller
             $jornada->id_usuario_actualizo = auth()->id() ?? 1;
             $jornada->estado = "A";
             $jornada->save();
+            Log::info('Verificación de existencia de usuario completada.', ['usuarioExistente' => $jornada]);
 
             return response()->json([
                 "ok" => true,
