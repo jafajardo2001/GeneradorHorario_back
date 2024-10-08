@@ -15,21 +15,46 @@ class AsignaturaController extends Controller
 {
     try {
         // Validar que los campos 'descripcion' y 'nivel' estén presentes
-       
+        $request->validate([
+            'descripcion' => 'required|string|max:255',
+            'id_nivel' => 'required|integer'
+        ]);
 
-        // Verificar si ya existe una asignatura con la misma descripción
-        $asignaturaExistente = AsignaturaModel::where('descripcion', $request->descripcion)->first();
+        // Verificar si ya existe una asignatura activa con la misma descripción y nivel
+        $asignaturaExistente = AsignaturaModel::where('descripcion', $request->descripcion)
+            ->where('id_nivel', $request->id_nivel)
+            ->where('estado', 'A') // Solo buscar materias activas
+            ->first();
 
         if ($asignaturaExistente) {
             return response()->json([
                 "ok" => false,
-                "msg_error" => "La materia ya existe con la descripción " . $request->descripcion
+                "msg_error" => "Ya existe una materia activa con la descripción '" . $request->descripcion . "' para el nivel " . $request->id_nivel
             ], 400);
+        }
+
+        // Verificar si existe una asignatura eliminada con la misma descripción y nivel
+        $asignaturaEliminada = AsignaturaModel::where('descripcion', $request->descripcion)
+            ->where('id_nivel', $request->id_nivel)
+            ->where('estado', 'E') // Solo buscar materias eliminadas
+            ->first();
+
+        if ($asignaturaEliminada) {
+            // Si la asignatura existe y está eliminada
+            $asignaturaEliminada->estado = 'A'; // Cambiar estado a activo
+            $asignaturaEliminada->ip_actualizacion = $request->ip();
+            $asignaturaEliminada->id_usuario_actualizo = auth()->id() ?? 1;
+            $asignaturaEliminada->save();
+
+            return response()->json([
+                "ok" => true,
+                "message" => "Materia '" . $asignaturaEliminada->descripcion . "' reactivada con éxito"
+            ], 200);
         }
 
         // Crear una nueva asignatura si no existe
         $modelo = new AsignaturaModel();
-        $modelo->descripcion = $request->descripcion;
+        $modelo->descripcion = $request->descripcion; // Guardar la descripción
         $modelo->id_nivel = $request->id_nivel; // Asegúrate de que este valor no sea nulo
         $modelo->ip_creacion = $request->ip();
         $modelo->ip_actualizacion = $request->ip();
@@ -54,6 +79,9 @@ class AsignaturaController extends Controller
         ], 500);
     }
 }
+
+
+
 
 
 
@@ -115,8 +143,9 @@ public function updateAsignatura(Request $request, $id)
             ], 400);
         }
 
-        // Verificar si la nueva descripción ya existe en otra asignatura
+        // Verificar si la nueva descripción y nivel ya existen en otra asignatura activa
         $asignaturaExistente = AsignaturaModel::where('descripcion', ucfirst(trim($request->descripcion)))
+            ->where('id_nivel', $request->id_nivel) // Comprobar si el nivel es el mismo
             ->where('id_materia', '!=', $id) // Excluir la asignatura actual de la búsqueda
             ->where('estado', 'A') // Considerar solo asignaturas activas
             ->first();
@@ -124,7 +153,7 @@ public function updateAsignatura(Request $request, $id)
         if ($asignaturaExistente) {
             return response()->json([
                 "ok" => false,
-                "message" => "La descripción de la asignatura ya existe."
+                "message" => "Ya existe una asignatura activa con la misma descripción y nivel."
             ], 400);
         }
 
@@ -132,9 +161,8 @@ public function updateAsignatura(Request $request, $id)
         $asignatura->update([
             "descripcion" => isset($request->descripcion) ? ucfirst(trim($request->descripcion)) : $asignatura->descripcion,
             "id_usuario_actualizo" => auth()->id() ?? 1,
-            "id_nivel" => isset($request->id_nivel),
+            "id_nivel" => $request->id_nivel,
             "ip_actualizo" => $request->ip(),
-            "estado" => isset($request->estado) ? $request->estado : "A"
         ]);
 
         return response()->json([
@@ -153,6 +181,7 @@ public function updateAsignatura(Request $request, $id)
         ], 500);
     }
 }
+
 
 
 public function showAsignatura()

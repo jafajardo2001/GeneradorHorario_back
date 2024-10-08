@@ -13,7 +13,7 @@ return new class extends Migration
     {
         Schema::create('materias', function (Blueprint $table) {
             $table->id('id_materia'); // Bigint primary key
-            $table->string('descripcion', 255)->unique()->notNullable();
+            $table->string('descripcion', 255);
             $table->unsignedBigInteger('id_nivel');
 
             $table->string('ip_creacion', 45)->nullable();
