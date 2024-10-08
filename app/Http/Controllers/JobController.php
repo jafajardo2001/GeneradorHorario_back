@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\JobModel;
+use App\Models\UsuarioModel;
 use App\Services\MensajeAlertasServicio;
 use Exception;
 use Illuminate\Http\Request;
@@ -95,6 +96,8 @@ class JobController extends Controller
 
     public function updateJob(Request $request, $id)
     {
+        Log::info("Petición entrante " . __FILE__ . " -> " . __FUNCTION__ . " IP " . request()->ip());
+
         try {
             // Buscar el trabajo por el id proporcionado
             $job = JobModel::find($id);
@@ -116,6 +119,7 @@ class JobController extends Controller
 
             // Respuesta exitosa
             return response()->json([
+                "ok" => true,
                 "message" => "Trabajo actualizado con éxito"
             ], 200);
         } catch (\Exception $e) {
@@ -133,42 +137,61 @@ class JobController extends Controller
 
 
     public function deleteJob(Request $request, $id)
-    {  
-        try {
-            // Buscar el trabajo por el id proporcionado
-            $job = JobModel::find($id);
-            
-            if (!$job) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "El trabajo no existe con el id $id"
-                ], 400);    
-            }
+{
+    Log::info("Petición entrante " . __FILE__ . " -> " . __FUNCTION__ . " IP " . request()->ip());
 
-            // Marcar el trabajo como eliminado (cambiando su estado)
-            $job->update([
-                "estado" => "E", // Estado para indicar que está eliminado
-                "id_usuario_actualizo" => auth()->id() ?? 1, // ID del usuario que realiza la actualización
-                "ip_actualizacion" => $request->ip(), // IP del usuario
-                "fecha_actualizacion" => now(), // Fecha y hora actual
-            ]);
+    try {
+        // Buscar el trabajo por el id proporcionado
+        $job = JobModel::find($id);
 
-            return response()->json([
-                "ok" => true,
-                "message" => "Trabajo eliminado con éxito"
-            ], 200);
-        } catch (\Exception $e) {
-            // Manejar cualquier excepción y registrar el error
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje: " . $e->getMessage());
-            Log::error("Línea: " . $e->getLine());
-
+        if (!$job) {
             return response()->json([
                 "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
-        }   
+                "message" => "El trabajo no existe con el id $id"
+            ], 400);
+        }
+
+        // Buscar los usuarios que tienen este id_job asignado
+        $usuariosConJob = UsuarioModel::where('id_job', $id)->get();
+        Log::info('Verificación de existencia de usuario completada.', ['usuariosConJob' => $usuariosConJob]);
+    // Definir el id del rol por defecto
+    $rolDefectoId = 1;
+        if ($usuariosConJob->isNotEmpty()) {
+            // Quitar el id_job de todos los usuarios que lo tienen asignado
+            UsuarioModel::where('usuarios.id_job', $id)
+                ->update([
+                    'usuarios.id_job' => $rolDefectoId, // Desvincular el trabajo
+                    'usuarios.id_usuario_actualizo' => auth()->id() ?? 1, // ID del usuario que realiza la actualización
+                    'usuarios.ip_actualizacion' => $request->ip(), // IP del usuario
+                    'usuarios.fecha_actualizacion' => now(), // Fecha y hora actual
+                ]);
+        }
+
+        // Marcar el trabajo como eliminado (cambiando su estado)
+        $job->update([
+            "estado" => "E", // Estado para indicar que está eliminado
+            "id_usuario_actualizo" => auth()->id() ?? 1, // ID del usuario que realiza la actualización
+            "ip_actualizacion" => $request->ip(), // IP del usuario
+            "fecha_actualizacion" => now(), // Fecha y hora actual
+        ]);
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Trabajo eliminado con éxito y usuarios actualizados"
+        ], 200);
+    } catch (\Exception $e) {
+        // Manejar cualquier excepción y registrar el error
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
 
 }

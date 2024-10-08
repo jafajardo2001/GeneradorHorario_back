@@ -14,6 +14,8 @@ return new class extends Migration
         Schema::create('materias', function (Blueprint $table) {
             $table->id('id_materia'); // Bigint primary key
             $table->string('descripcion', 255)->unique()->notNullable();
+            $table->unsignedBigInteger('id_nivel');
+
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);
             $table->integer('id_usuario_creador');
@@ -21,6 +23,13 @@ return new class extends Migration
             $table->date('fecha_creacion');
             $table->date('fecha_actualizacion');
             $table->enum('estado', ['A', 'E', 'I'])->default('A');
+
+            // Foreign key constraint
+            $table->foreign('id_nivel')
+                ->references('id_nivel')
+                ->on('nivel')
+                ->onDelete('cascade')
+                ->onUpdate('cascade');
         });
     }
 

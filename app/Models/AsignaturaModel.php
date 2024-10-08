@@ -15,5 +15,10 @@ class AsignaturaModel extends Model
     const UPDATED_AT = 'fecha_actualizacion';
 
     // Asegúrate de que 'estado' esté en el array $fillable para permitir la actualización
-    protected $fillable = ['descripcion', 'estado', 'id_usuario_creador', 'ip_actualizacion', 'fecha_actualizacion'];
+    protected $fillable = ['descripcion', 'estado', 'id_usuario_creador', 'ip_actualizacion', 'fecha_actualizacion',"id_nivel"];
+    public function nivel()
+    {
+        return $this->belongsTo(NivelModel::class, 'id_nivel', 'id_nivel');
+    }
+    
 }

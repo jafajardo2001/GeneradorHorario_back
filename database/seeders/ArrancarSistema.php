@@ -7,6 +7,7 @@ use Illuminate\Database\Seeder;
 use App\Models\Usuario;
 use App\Models\Carrera;
 use App\Models\CarreraModel;
+use App\Models\NivelModel;
 use App\Models\EducacionGlobal;
 use App\Models\InstitutoModel;
 use App\Models\PeriodoElectivoModel;
@@ -34,8 +35,10 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
-        RolModel::insert([
-            "descripcion" => "Administrador",
+        NivelModel::create([
+            "numero" => "1",
+            "nemonico" => "1",
+            "termino" => "primero",
             "ip_creacion" => "127.0.0.1",
             "ip_actualizacion" => "127.0.0.1",
             "id_usuario_creador" => 1,
@@ -44,6 +47,31 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
+        RolModel::insert([
+            [
+                // Dejar id_rol fuera
+                "descripcion" => "sin perfil",
+                "ip_creacion" => "127.0.0.1",
+                "ip_actualizacion" => "127.0.0.1",
+                "id_usuario_creador" => 1,
+                "id_usuario_actualizo" => 1,
+                "fecha_creacion" => Carbon::now(),
+                "fecha_actualizacion" => Carbon::now(),
+                "estado" => "E"
+            ],
+            [
+                // Dejar id_rol fuera
+                "descripcion" => "Administrador",
+                "ip_creacion" => "127.0.0.1",
+                "ip_actualizacion" => "127.0.0.1",
+                "id_usuario_creador" => 1,
+                "id_usuario_actualizo" => 1,
+                "fecha_creacion" => Carbon::now(),
+                "fecha_actualizacion" => Carbon::now(),
+                "estado" => "A"
+            ]
+        ]);
+        
         JobModel::insert([
             "descripcion" => "Tiempo Completo",
             "ip_creacion" => "127.0.0.1",
@@ -73,7 +101,7 @@ class ArrancarSistema extends Seeder
                 "telefono" => "0987654321",
                 "usuario" => "Admin",
                 "clave" => bcrypt("_Admin#2023*"),
-                "id_rol" => 1,
+                "id_rol" => 2,
                 "id_titulo_academico" => 1,
                 "id_job" =>1,
 

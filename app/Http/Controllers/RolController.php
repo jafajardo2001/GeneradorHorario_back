@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\RolModel;
 use App\Services\MensajeAlertasServicio;
 use Exception;
+use App\Models\UsuarioModel;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Request as request_ip;
@@ -62,47 +63,72 @@ class RolController extends Controller
     }
 
     public function deleteRol(Request $request, $id)
-    {
-        try {
-            $rol = RolModel::find($id);
+{
+    try {
+        // Buscar el rol por el id proporcionado
+        $rol = RolModel::find($id);
 
-            if (!$rol) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "El perfil no existe con el id $id"
-                ], 400);
-            }
-
-            $result = $rol->update([
-                "estado" => "E",  // Estado cambiado a "E" para marcarlo como eliminado
-                "id_usuario_creador" => auth()->id() ?? 1,
-                "ip_actualizacion" => $request->ip(),
-                "fecha_actualizacion" => now(),
-            ]);
-
-            if ($result) {
-                return response()->json([
-                    "ok" => true,
-                    "message" => "Perfil eliminado con éxito"
-                ], 200);
-            } else {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "No se pudo desactivar el perfil"
-                ], 400);
-            }
-
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje: " . $e->getMessage());
-            Log::error("Línea: " . $e->getLine());
-
+        if (!$rol) {
             return response()->json([
                 "ok" => false,
-                "message" => "Error interno en el servidor"
+                "message" => "El perfil no existe con el id $id"
+            ], 404);
+        }
+
+        // Definir el id del rol por defecto
+        $rolDefectoId = 1; // Asegúrate de que este rol exista
+
+        // Verificar que el rol por defecto exista
+        $rolDefecto = RolModel::find($rolDefectoId);
+        if (!$rolDefecto) {
+            return response()->json([
+                "ok" => false,
+                "message" => "El rol por defecto no existe."
             ], 500);
         }
+
+        // Buscar los usuarios que tienen este id_rol asignado
+        $usuariosConRol = UsuarioModel::where('id_rol', $id)->get();
+        Log::info('Verificación de existencia de usuario completada.', ['usuariosConRol' => $usuariosConRol]);
+
+        if ($usuariosConRol->isNotEmpty()) {
+            // Asignar el rol por defecto a todos los usuarios que tienen el rol a eliminar
+            UsuarioModel::where('id_rol', $id)
+                ->update([
+                    'id_rol' => $rolDefectoId, // Asignar el rol por defecto
+                    'id_usuario_actualizo' => auth()->id() ?? 1, // ID del usuario que realiza la actualización
+                    'ip_actualizacion' => $request->ip(), // IP del usuario
+                    'fecha_actualizacion' => now(), // Fecha y hora actual
+                ]);
+        }
+
+        // Marcar el rol como eliminado (cambiando su estado)
+        $rol->update([
+            "estado" => "E",  // Estado cambiado a "E" para marcarlo como eliminado
+            "id_usuario_actualizo" => auth()->id() ?? 1, // ID del usuario que realiza la actualización
+            "ip_actualizacion" => $request->ip(), // IP del usuario
+            "fecha_actualizacion" => now(), // Fecha y hora actual
+        ]);
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Perfil eliminado con éxito y usuarios actualizados"
+        ], 200);
+
+    } catch (Exception $e) {
+        // Manejar cualquier excepción y registrar el error
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
+
 
 
     public function getRoles(Request $request)

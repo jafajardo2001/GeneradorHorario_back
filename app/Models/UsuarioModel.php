@@ -22,6 +22,7 @@ class UsuarioModel extends Model
         'nombres',
         'apellidos',
         "id_usuario_creador",
+        "id_usuario_actualizo",
         "ip_actualizacion",
         "fecha_actualizacion",
         'correo',

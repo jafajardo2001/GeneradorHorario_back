@@ -14,13 +14,8 @@ class AsignaturaController extends Controller
     public function storeAsignatura(Request $request)
 {
     try {
-        // Validar que el campo 'descripcion' esté presente
-        if (!isset($request->descripcion)) {
-            return response()->json([
-                "ok" => false,
-                "msg_error" => "El campo de descripción es obligatorio"
-            ], 400);
-        }
+        // Validar que los campos 'descripcion' y 'nivel' estén presentes
+       
 
         // Verificar si ya existe una asignatura con la misma descripción
         $asignaturaExistente = AsignaturaModel::where('descripcion', $request->descripcion)->first();
@@ -35,6 +30,7 @@ class AsignaturaController extends Controller
         // Crear una nueva asignatura si no existe
         $modelo = new AsignaturaModel();
         $modelo->descripcion = $request->descripcion;
+        $modelo->id_nivel = $request->id_nivel; // Asegúrate de que este valor no sea nulo
         $modelo->ip_creacion = $request->ip();
         $modelo->ip_actualizacion = $request->ip();
         $modelo->id_usuario_creador = auth()->id() ?? 1;
@@ -58,6 +54,7 @@ class AsignaturaController extends Controller
         ], 500);
     }
 }
+
 
 
 
@@ -135,6 +132,7 @@ public function updateAsignatura(Request $request, $id)
         $asignatura->update([
             "descripcion" => isset($request->descripcion) ? ucfirst(trim($request->descripcion)) : $asignatura->descripcion,
             "id_usuario_actualizo" => auth()->id() ?? 1,
+            "id_nivel" => isset($request->id_nivel),
             "ip_actualizo" => $request->ip(),
             "estado" => isset($request->estado) ? $request->estado : "A"
         ]);
@@ -157,23 +155,39 @@ public function updateAsignatura(Request $request, $id)
 }
 
 
-    public function showAsignatura()
-    {
-        try{
-            $asignatura = AsignaturaModel::select("id_materia","descripcion","fecha_creacion","estado","fecha_actualizacion")->whereIn("estado",["A","I"])->get();
-            return Response()->json([
-                "ok" => true,
-                "data" => $asignatura
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
+public function showAsignatura()
+{
+    try {
+        // Realiza un join con la tabla de niveles para obtener la información adicional
+        $asignaturas = AsignaturaModel::select(
+            "materias.id_materia", 
+            "materias.descripcion", 
+            "materias.fecha_creacion", 
+            "materias.estado",
+            "nivel.id_nivel", 
+            "materias.fecha_actualizacion",
+            "nivel.termino"    // Selecciona el término
+        )
+        ->join('nivel', 'materias.id_nivel', '=', 'nivel.id_nivel')  // Une la tabla de niveles
+        ->whereIn("materias.estado", ["A", "I"])  // Solo selecciona asignaturas activas o inactivas
+        ->get();
+        Log::info('Verificación de existencia de usuario completada.', ['asignaturas' => $asignaturas]);
 
-            return Response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ],500);
-        }
+        return response()->json([
+            "ok" => true,
+            "data" => $asignaturas
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Linea : " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 }

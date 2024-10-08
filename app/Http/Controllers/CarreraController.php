@@ -18,9 +18,7 @@ class CarreraController extends Controller
     try{
         // Validar los campos obligatorios
         $modelo = new CarreraModel();
-        $campos_requeridos = $modelo->getFillable();
-        $campos_recibidos = array_keys($request->all());
-        $campos_faltantes = array_diff($campos_requeridos, $campos_recibidos);
+        
         
         if (!empty($campos_faltantes)) {
             return response()->json([

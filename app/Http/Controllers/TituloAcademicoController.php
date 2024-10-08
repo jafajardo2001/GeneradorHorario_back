@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use Illuminate\Http\Request;
 use App\Models\TituloAcademicoModel;
+use App\Models\UsuarioModel;
 use Carbon\Carbon;
 use Exception;
 use Illuminate\Support\Facades\Request as request_ip;
@@ -116,36 +117,56 @@ class TituloAcademicoController extends Controller
     }
 
     public function deleteTituloAcademico(Request $request, $id)
-    {
-        try {
-            $titulo = TituloAcademicoModel::find($id);
-            
-            if (!$titulo) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "Error falta el parametro del id"
-                ],404);
-            }
-             // Actualizar el estado a "E" para indicar que se ha eliminado
-        $titulo->update([
-            "estado" => "E", // "E" para eliminado
-            "id_usuario_actualizo" => auth()->id() ?? 1,
-            "ip_actualizo" => $request->ip(),
-            "fecha_actualizacion" => now(),
-        ]);
-            return response()->json([
-                "ok" => true,
-                "message" => "Título académico eliminado con éxito"
-            ], 200);
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje : " . $e->getMessage());
-            Log::error("Linea : " . $e->getLine());
+{
+    try {
+        // Buscar el título académico por el id proporcionado
+        $titulo = TituloAcademicoModel::find($id);
+        
+        if (!$titulo) {
             return response()->json([
                 "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
+                "mensaje" => "El título académico no existe con el id $id"
+            ], 404);
         }
+
+        // Buscar los usuarios que tienen este id_titulo_academico asignado
+        $usuariosConTitulo = UsuarioModel::where('id_titulo_academico', $id)->get();
+
+        if ($usuariosConTitulo->isNotEmpty()) {
+            // Quitar el id_titulo_academico de todos los usuarios que lo tienen asignado
+            UsuarioModel::where('id_titulo_academico', $id)
+                ->update([
+                    'id_titulo_academico' => 0, // Desvincular el título académico
+                    'id_usuario_actualizo' => auth()->id() ?? 1, // ID del usuario que realiza la actualización
+                    'ip_actualizacion' => $request->ip(), // IP del usuario
+                    'fecha_actualizacion' => now(), // Fecha y hora actual
+                ]);
+        }
+
+        // Marcar el título académico como eliminado (cambiando su estado)
+        $titulo->update([
+            "estado" => "E", // Estado para indicar que está eliminado
+            "id_usuario_actualizo" => auth()->id() ?? 1, // ID del usuario que realiza la actualización
+            "ip_actualizo" => $request->ip(), // IP del usuario
+            "fecha_actualizacion" => now(), // Fecha y hora actual
+        ]);
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Título académico eliminado con éxito y usuarios actualizados"
+        ], 200);
+    } catch (Exception $e) {
+        // Manejar cualquier excepción y registrar el error
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
     
 }
