@@ -42,6 +42,7 @@ Route::prefix('istg')->group(
         Route::delete("delete_instituto/", [InstitutoController::class, 'deleteInstituto']);
         //ASIGNATURA
         Route::get("show_data_asignatura/", [AsignaturaController::class, 'showAsignatura']);
+        Route::get("obtener_materias_por_nivel/{idNivel}", [AsignaturaController::class, 'obtenerMateriasPorNivel']);
         Route::put("update_asignatura/{id}", [AsignaturaController::class, 'updateAsignatura']);
         Route::post("create_asignatura/", [AsignaturaController::class, 'storeAsignatura']);
         Route::put("delete_asignatura/{id}", [AsignaturaController::class, 'deleteAsignatura']);
