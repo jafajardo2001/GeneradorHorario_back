@@ -154,6 +154,7 @@ class ParaleloController extends Controller
 
               // Respuesta exitosa
             return response()->json([
+                "ok" => true,
                 "message" => "Paralelo actualizado con éxito"
             ], 200);
         } catch (\Exception $e) {
