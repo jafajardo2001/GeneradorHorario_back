@@ -186,8 +186,16 @@ class DistribucionHorario extends Controller
             "carreras.nombre as nombre_carrera",
             "materias.descripcion as materia",
             "nivel.nemonico as nivel",
+            "nivel.termino as termino_nivel",
             "id_distribucion as id_distribucion",
+            "usuarios.id_usuario as id_usuario",
+            "nivel.id_nivel as idnivel",
+            "materias.id_materia as idmateria",
+            
+            "carreras.id_carrera as idcarrera",
+
             "paralelo.paralelo",
+            
             "distribuciones_horario_academica.dia",
             "distribuciones_horario_academica.hora_inicio",
             "distribuciones_horario_academica.hora_termina",
@@ -254,10 +262,12 @@ class DistribucionHorario extends Controller
 
             // Obtener los datos de la solicitud
             $data = $request->only([
-                'id_usuario',
+                'id_docente',
                 'id_periodo_academico',
                 'id_educacion_global',
                 'id_materia',
+                'id_carrera',
+
                 'id_nivel',
                 'id_paralelo',
                 'dia',
@@ -269,7 +279,7 @@ class DistribucionHorario extends Controller
             // Obtener el tipo de trabajo del docente
             $job = DB::table('usuarios')
                 ->join('job', 'usuarios.id_job', '=', 'job.id_job')
-                ->where('usuarios.id_usuario', $data['id_usuario'] ?? $distribucion->id_usuario)
+                ->where('usuarios.id_usuario', $data['id_docente'] ?? $distribucion->id_docente)
                 ->select('job.descripcion as job_descripcion')
                 ->first();
 
@@ -285,7 +295,7 @@ class DistribucionHorario extends Controller
             $materiasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
 
             // Validar límite diario de materias
-            $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $data['id_usuario'] ?? $distribucion->id_usuario)
+            $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
                 ->where("dia", $data['dia'] ?? $distribucion->dia)
                 ->where("estado", "A")
                 ->count();
@@ -298,7 +308,7 @@ class DistribucionHorario extends Controller
             }
 
             // Validar límite semanal de materias
-            $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $data['id_usuario'] ?? $distribucion->id_usuario)
+            $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
                 ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
                 ->where("estado", "A")
                 ->count();
@@ -311,7 +321,7 @@ class DistribucionHorario extends Controller
             }
 
             // Validar solapamiento de horarios
-            $exists = ModelsDistribucionHorario::where("id_usuario", $data['id_usuario'] ?? $distribucion->id_usuario)
+            $exists = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
                 ->where("dia", $data['dia'] ?? $distribucion->dia)
                 ->where("hora_inicio", $data['hora_inicio'] ?? $distribucion->hora_inicio)
                 ->where("hora_termina", $data['hora_termina'] ?? $distribucion->hora_termina)
@@ -328,10 +338,11 @@ class DistribucionHorario extends Controller
 
             // Actualizar los campos condicionalmente
             $distribucion->update([
-                "id_usuario" => $data['id_usuario'] ?? $distribucion->id_usuario,
+                "id_usuario" => $data['id_docente'] ?? $distribucion->id_docente,
                 "id_periodo_academico" => $data['id_periodo_academico'] ?? $distribucion->id_periodo_academico,
                 "id_educacion_global" => $data['id_educacion_global'] ?? $distribucion->id_educacion_global,
                 "id_materia" => $data['id_materia'] ?? $distribucion->id_materia,
+                "id_carrera" => $data['id_carrera'] ?? $distribucion->id_carrera,
                 "id_nivel" => $data['id_nivel'] ?? $distribucion->id_nivel,
                 "id_paralelo" => $data['id_paralelo'] ?? $distribucion->id_paralelo,
                 "dia" => $data['dia'] ?? $distribucion->dia,

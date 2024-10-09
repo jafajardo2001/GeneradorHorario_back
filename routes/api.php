@@ -52,7 +52,7 @@ Route::prefix('istg')->group(
         Route::get("show_carrera/", [CarreraController::class, 'showCarrera']);
         Route::put("update_carrera/{id}", [CarreraController::class, 'updateCarrera']);
         Route::post("create_carrera/", [CarreraController::class, 'storeCarrera']);
-        Route::delete("delete_carrera/{id}", [CarreraController::class, 'deleteCarrera']);
+        Route::put("delete_carrera/{id}", [CarreraController::class, 'deleteCarrera']);
         //NIVEL
         Route::get("show_nivel/", [NivelController::class, 'showNivel']);
         Route::put("update_nivel/{id}", [NivelController::class, 'updateNivel']);

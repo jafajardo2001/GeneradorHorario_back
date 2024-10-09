@@ -20,7 +20,9 @@ class CarreraModel extends Model
         'id_usuario_creador',
         'id_usuario_actualizo',
         'fecha_creacion',
-        'fecha_actualizacion',];
+        'fecha_actualizacion',
+        'estado',
+];
 
     public function jornada()
     {

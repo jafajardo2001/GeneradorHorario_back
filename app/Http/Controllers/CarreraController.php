@@ -67,45 +67,58 @@ class CarreraController extends Controller
 }
 
 
-    public function deleteCarrera(Request $request,$id)
-    {  
-        try{
-            $asignatura = CarreraModel::find($id);
-            if(!$asignatura){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "La carrera no existe con el id $id"
-                ], 400);    
-            }
-            
-            CarreraModel::find($id)->updated([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
+public function deleteCarrera(Request $request, $id)
+{  
+    try {
+        // Buscar la carrera por su ID
+        $carrera = CarreraModel::find($id);
+        if (!$carrera) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La carrera no existe con el id $id"
+            ], 400);    
+        }
 
-            ]);
+        // Cambiar el estado de la carrera a "E"
+        $carrera->estado = "E";  // Cambia el estado a "E"
+        $carrera->id_usuario_actualizo = auth()->id() ?? 1;  // Actualiza el usuario que hace el cambio
+        $carrera->ip_actualizacion = $request->ip();  // Actualiza la IP
+        $carrera->save();  // Guarda los cambios
 
-            return Response()->json([
-                "ok" => true,
-                "message" => "Carrera eliminada con exito"
-            ], 200);
+        // Eliminar registros en usuario_carrera_jornada
+        \DB::table('usuario_carrera_jornada')
+            ->where('id_carrera', $id)
+            ->delete();
 
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
+        // O puedes usar `delete()` si deseas eliminar la fila
 
-            return Response()->json([
-                "ok" => true,
-                "message" => "Error interno en el servidor"
-            ], 500);
+        return response()->json([
+            "ok" => true,
+            "message" => "Carrera eliminada con éxito"
+        ], 200);
 
-        }   
-    }
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }   
+}
+
 
     public function updateCarrera(Request $request, $id)
 {
     try {
+        // Validar los datos recibidos
+        $request->validate([
+            'nombre' => 'required|string|max:255',
+            'id_jornada' => 'required|integer',
+        ]);
+
         // Buscar la carrera por su ID
         $carrera = CarreraModel::find($id);
 
@@ -117,10 +130,23 @@ class CarreraController extends Controller
             ], 404);
         }
 
+        // Verificar si ya existe una carrera con el mismo nombre y jornada
+        $carreraExistente = CarreraModel::where('nombre', $request->nombre)
+            ->where('id_jornada', $request->id_jornada)
+            ->where('id_carrera', '!=', $id) // Excluir la carrera actual
+            ->first();
+
+        if ($carreraExistente) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Ya existe una carrera con el nombre '" . $request->nombre . "' en la misma jornada.",
+            ], 400);
+        }
+
         // Actualizar la carrera con la nueva información
-        CarreraModel::find($id)->update([
-            "nombre" => isset($request->nombre) ? $request->nombre : $carrera->nombre,
-            "id_jornada" => $request->id_jornada ?? $carrera->id_jornada,
+        $carrera->update([
+            "nombre" => $request->nombre,
+            "id_jornada" => $request->id_jornada,
             "id_usuario_creador" => auth()->id() ?? 1,
             "ip_actualizacion" => $request->ip(),
             "fecha_actualizacion" => now(),
@@ -129,17 +155,14 @@ class CarreraController extends Controller
         // Verificar si hay un registro en la tabla usuario_carrera_jornada
         $usuarioCarreraJornada = \DB::table('usuario_carrera_jornada')
             ->where('id_carrera', $id)
-            ->where('id_jornada', $carrera->id_jornada) // Jornada actual
-            ->first();
+            ->first(); // Solo buscar por el ID de la carrera
 
-        // Si existe un registro, actualizar la id_jornada
-        if ($usuarioCarreraJornada) {
+        // Si existe un registro y la jornada ha cambiado, actualizar la id_jornada
+        if ($usuarioCarreraJornada && $usuarioCarreraJornada->id_jornada !== $request->id_jornada) {
             \DB::table('usuario_carrera_jornada')
                 ->where('id_carrera', $id)
-                ->where('id_jornada', $carrera->id_jornada) // Jornada actual
                 ->update([
                     'id_jornada' => $request->id_jornada,
-                    
                 ]);
         }
 
@@ -158,6 +181,8 @@ class CarreraController extends Controller
         ], 500);
     }
 }
+
+
 
 
     public function showCarrera()
