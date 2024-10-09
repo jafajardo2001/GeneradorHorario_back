@@ -26,6 +26,12 @@ class DistribucionHorario extends Controller
         $idPeriodoElectivo = 1;
         $idEducacionGlobal = 1;
 
+        // Loguear información inicial
+        Log::info('Detalles del horario a insertar', ['detalles' => $detalles]);
+        Log::info('ID Usuario', ['id_usuario' => $idUsuario]);
+        Log::info('ID Periodo Electivo', ['id_periodo_electivo' => $idPeriodoElectivo]);
+        Log::info('ID Educación Global', ['id_educacion_global' => $idEducacionGlobal]);
+
         // Obtener el tipo de trabajo del docente
         $job = DB::table('usuarios')
             ->join('job', 'usuarios.id_job', '=', 'job.id_job')
@@ -36,6 +42,8 @@ class DistribucionHorario extends Controller
         if (!$job) {
             throw new Exception("No se pudo determinar el tipo de trabajo del docente.");
         }
+
+        Log::info('Tipo de trabajo del docente', ['job_descripcion' => $job->job_descripcion]);
 
         // Definir los límites según el tipo de trabajo
         $horasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
@@ -49,7 +57,7 @@ class DistribucionHorario extends Controller
             ->where("estado", "A")
             ->get()
             ->sum(function($materia) {
-                return strtotime($materia->hora_termina) - strtotime($materia->hora_inicio); // Sumar las horas de cada materia
+                return strtotime($materia->hora_termina) - strtotime($materia->hora_inicio);
             });
 
         // Calcular horas a ingresar en la semana
@@ -60,6 +68,9 @@ class DistribucionHorario extends Controller
         // Convertir de segundos a horas
         $horasExistentesPorSemana = $horasExistentesPorSemana / 3600;
         $horasAIngresarPorSemana = $horasAIngresarPorSemana / 3600;
+
+        Log::info('Horas existentes por semana', ['horas_existentes' => $horasExistentesPorSemana]);
+        Log::info('Horas a ingresar por semana', ['horas_a_ingresar' => $horasAIngresarPorSemana]);
 
         if ($horasExistentesPorSemana + $horasAIngresarPorSemana > $horasPorSemanaLimite) {
             throw new Exception("No se puede asignar más de {$horasPorSemanaLimite} horas por semana.");
@@ -83,6 +94,9 @@ class DistribucionHorario extends Controller
 
             $horasExistentesPorDia = $horasExistentesPorDia / 3600;
             $horasAIngresarPorDia = $horasAIngresarPorDia / 3600;
+
+            Log::info("Horas existentes por día ($dia)", ['horas_existentes' => $horasExistentesPorDia]);
+            Log::info("Horas a ingresar por día ($dia)", ['horas_a_ingresar' => $horasAIngresarPorDia]);
 
             if ($horasExistentesPorDia + $horasAIngresarPorDia > $horasPorDiaLimite) {
                 throw new Exception("No se puede asignar más de {$horasPorDiaLimite} horas para el día " . $dia);
@@ -111,6 +125,8 @@ class DistribucionHorario extends Controller
                 throw new Exception("Ya existe una hora en el rango de " . $values->hora_inicio . " y " . $values->hora_termina);
             }
 
+            Log::info('Datos de materia a insertar', (array)$values);
+
             return [
                 "id_usuario" => $idUsuario,
                 "id_periodo_academico" => $idPeriodoElectivo,
@@ -132,6 +148,9 @@ class DistribucionHorario extends Controller
             ];
         });
 
+        // Loguear datos finales a insertar
+        Log::info('Datos finales de horarios a insertar', ['insert_data' => $insert_data]);
+
         ModelsDistribucionHorario::insert(array_values($insert_data->toArray()));
         DB::commit();
         return response()->json([
@@ -152,6 +171,7 @@ class DistribucionHorario extends Controller
         ]);
     }
 }
+
 
 
 
