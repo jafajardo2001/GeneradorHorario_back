@@ -140,7 +140,7 @@ class ArrancarSistema extends Seeder
                 "id_usuario_actualizo" => 1,
                 "fecha_creacion" => Carbon::now(),
                 "fecha_actualizacion" => Carbon::now(),
-                "estado" => "E"
+                "estado" => "A"
             ],
         ]);
         
