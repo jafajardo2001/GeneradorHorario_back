@@ -83,6 +83,8 @@ class ArrancarSistema extends Seeder
             "estado" => "A"
         ]);
         JornadaModel::insert([
+    
+        [
             "descripcion" => "Matutina",
             "ip_creacion" => "127.0.0.1",
             "ip_actualizacion" => "127.0.0.1",
@@ -91,6 +93,7 @@ class ArrancarSistema extends Seeder
             "fecha_creacion" => Carbon::now(),
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
+        ],
         ]);
         if(RolModel::find(1)){
             UsuarioModel::create([
@@ -127,16 +130,20 @@ class ArrancarSistema extends Seeder
         ]);
 
         CarreraModel::create([
-            "nombre" => "Desarrollo de software",
-            "ip_creacion" => "127.0.0.1",
-            "ip_actualizacion" => "127.0.0.1",
-            "id_usuario_creador" => 1,
-            "id_jornada" => 1,
-            "id_usuario_actualizo" => 1,
-            "fecha_creacion" => Carbon::now(),
-            "fecha_actualizacion" => Carbon::now(),
-            "estado" => "A"
+            
+            [
+                "nombre" => "Desarrollo de software",
+                "ip_creacion" => "127.0.0.1",
+                "ip_actualizacion" => "127.0.0.1",
+                "id_usuario_creador" => 1,
+                "id_jornada" => 1,
+                "id_usuario_actualizo" => 1,
+                "fecha_creacion" => Carbon::now(),
+                "fecha_actualizacion" => Carbon::now(),
+                "estado" => "E"
+            ],
         ]);
+        
 
         InstitutoModel::create([
             "nombre" => "Instituto tecnologico de Guayaquil",

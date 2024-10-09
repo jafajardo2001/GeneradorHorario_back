@@ -79,6 +79,11 @@ public function deleteCarrera(Request $request, $id)
             ], 400);    
         }
 
+        // Verificar si hay distribuciones asociadas
+        $distribuciones = \DB::table('distribuciones_horario_academica')
+            ->where('id_carrera', $id)
+            ->exists();
+
         // Cambiar el estado de la carrera a "E"
         $carrera->estado = "E";  // Cambia el estado a "E"
         $carrera->id_usuario_actualizo = auth()->id() ?? 1;  // Actualiza el usuario que hace el cambio
@@ -90,11 +95,18 @@ public function deleteCarrera(Request $request, $id)
             ->where('id_carrera', $id)
             ->delete();
 
-        // O puedes usar `delete()` si deseas eliminar la fila
-
+        // Inhabilitar distribuciones asociadas si existen
+        if ($distribuciones) {
+            \DB::table('distribuciones_horario_academica')
+                ->where('id_carrera', $id)
+                ->update(['estado' => "E"]);
+        }
+            
         return response()->json([
             "ok" => true,
-            "message" => "Carrera eliminada con éxito"
+            "message" => $distribuciones 
+                ? "Carrera y distribuciones eliminadas con éxito" 
+                : "Carrera eliminada con éxito"
         ], 200);
 
     } catch (Exception $e) {
@@ -108,6 +120,31 @@ public function deleteCarrera(Request $request, $id)
         ], 500);
     }   
 }
+public function checkDistribucionesPorCarrera($id)
+{
+    try {
+        // Verificar si hay distribuciones asociadas a la carrera
+        $distribuciones = \DB::table('distribuciones_horario_academica')
+            ->where('estado', "A") // Cambia a 'id_nivel' para verificar el curso
+            ->where('id_carrera', $id)
+            ->count();
+
+        return response()->json([
+            "ok" => true,
+            "count" => $distribuciones, // Retornar el conteo de distribuciones
+        ], 200);
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
 
 
     public function updateCarrera(Request $request, $id)
@@ -196,7 +233,7 @@ public function deleteCarrera(Request $request, $id)
                 "carreras.estado"
             )
             ->join('jornada', 'carreras.id_jornada', '=', 'jornada.id_jornada')
-            ->whereIn("carreras.estado", ["A", "I"])
+            ->whereIn("carreras.estado", ["A"])
             ->get();    
 
             return response()->json([
@@ -214,6 +251,6 @@ public function deleteCarrera(Request $request, $id)
             ], 500);
         }
     }
-
+    
 
 }

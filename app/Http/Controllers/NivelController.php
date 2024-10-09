@@ -82,42 +82,81 @@ class NivelController extends Controller
         }
     }
 
-    public function deleteNivel(Request $request,$id)
-    {  
-        try{
-            $asignatura = NivelModel::find($id);
-            if(!$asignatura){
-                return Response()->json([
-                    "ok" => true,
-                    "message" => "El nivel no existe con el id $id"
-                ], 400);    
-            }
-            
-            NivelModel::find($id)->update([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
-                "fecha_actualizacion" => now(),
-            ]);
+    public function deleteNivel(Request $request, $id)
+{
+    try {
+        // Buscar el nivel por su ID
+        $nivel = NivelModel::find($id);
+        if (!$nivel) {
+            return response()->json([
+                "ok" => false,
+                "message" => "El nivel no existe con el id $id"
+            ], 400);    
+        }
 
-            return Response()->json([
+        // Verificar si hay distribuciones asociadas
+        $distribuciones = \DB::table('distribuciones_horario_academica')
+            ->where('id_nivel', $id) // Cambia a 'id_nivel' para verificar el curso
+            ->exists();
+
+        // Cambiar el estado del nivel a "E"
+        $nivel->estado = "E";  // Cambia el estado a "E"
+        $nivel->id_usuario_actualizo = auth()->id() ?? 1;  // Actualiza el usuario que hace el cambio
+        $nivel->ip_actualizacion = $request->ip();  // Actualiza la IP
+        $nivel->fecha_actualizacion = now(); // Actualiza la fecha de actualización
+        $nivel->save();  // Guarda los cambios
+
+        // Inhabilitar distribuciones asociadas si existen
+        if ($distribuciones) {
+            \DB::table('distribuciones_horario_academica')
+                ->where('id_nivel', $id)
+                ->update(['estado' => "E"]); // Cambia el estado de las distribuciones a "E"
+        }
+        
+        return response()->json([
+            "ok" => true,
+            "message" => $distribuciones 
+                ? "Nivel y distribuciones eliminadas con éxito" 
+                : "Nivel eliminado con éxito"
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }   
+}
+
+    public function checkDistribucionesPorCurso($id)
+    {
+        try {
+            $distribuciones = \DB::table('distribuciones_horario_academica')
+                ->where('id_nivel', $id)
+                ->where('estado', "A") // Cambia a 'id_nivel' para verificar el curso
+                // Cambia a 'id_nivel' para verificar el curso
+                ->count();
+    
+            return response()->json([
                 "ok" => true,
-                "message" => "Nivel eliminado con exito"
+                "count" => $distribuciones,
             ], 200);
-
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
-
-            return Response()->json([
-                "ok" => true,
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje: " . $e->getMessage());
+            Log::error("Línea: " . $e->getLine());
+    
+            return response()->json([
+                "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
-
-        }   
+        }
     }
-
+    
     public function updateNivel(Request $request,$id)
     {
         try{

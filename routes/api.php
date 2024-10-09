@@ -50,11 +50,15 @@ Route::prefix('istg')->group(
 
         //CARRERA
         Route::get("show_carrera/", [CarreraController::class, 'showCarrera']);
+        Route::get("distribuciones_por_carrera/{id}", [CarreraController::class, 'checkDistribucionesPorCarrera']);
+
         Route::put("update_carrera/{id}", [CarreraController::class, 'updateCarrera']);
         Route::post("create_carrera/", [CarreraController::class, 'storeCarrera']);
         Route::put("delete_carrera/{id}", [CarreraController::class, 'deleteCarrera']);
         //NIVEL
+        Route::get("distribuciones_por_curso/{id}", [NivelController::class, 'checkDistribucionesPorCurso']);
         Route::get("show_nivel/", [NivelController::class, 'showNivel']);
+
         Route::put("update_nivel/{id}", [NivelController::class, 'updateNivel']);
         Route::post("create_nivel/", [NivelController::class, 'storeNivelCarrera']);
         Route::put("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
