@@ -70,39 +70,79 @@ class ParaleloController extends Controller
     }
 
 
-    public function deleteParalelo(Request $request,$id)
-    {  
-        try{
+
+    public function deleteParalelo(Request $request, $id)
+    {
+        try {
+            // Buscar el paralelo por su ID
             $paralelo = ParaleloModel::find($id);
-            if(!$paralelo){
-                return Response()->json([
-                    "ok" => true,
+            if (!$paralelo) {
+                return response()->json([
+                    "ok" => false,
                     "message" => "El paralelo no existe con el id $id"
-                ], 400);    
+                ], 400);
             }
-            
-            ParaleloModel::find($id)->update([
-                "estado" => "E",
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
-                "fecha_actualizacion" => now(),
-            ]);
 
-            return Response()->json([
-                "ok" => true,
-                "message" => "Paralelo eliminado con exito"
-            ],200);
-        }catch(Exception $e){
-            log::error( __FILE__ . " > " . __FUNCTION__);
-            log::error("Mensaje : " . $e->getMessage());
-            log::error("Linea : " . $e->getLine());
+            // Verificar si hay distribuciones asociadas
+            $distribuciones = \DB::table('distribuciones_horario_academica')
+                ->where('id_paralelo', $id)
+                ->exists();
 
-            return Response()->json([
+            // Cambiar el estado del paralelo a "E"
+            $paralelo->estado = "E";
+            $paralelo->id_usuario_actualizo = auth()->id() ?? 1;
+            $paralelo->ip_actualizacion = $request->ip();
+            $paralelo->fecha_actualizacion = now();
+            $paralelo->save();
+
+            // Inhabilitar distribuciones asociadas si existen
+            if ($distribuciones) {
+                \DB::table('distribuciones_horario_academica')
+                    ->where('id_paralelo', $id)
+                    ->update(['estado' => "E"]);
+            }
+
+            return response()->json([
                 "ok" => true,
+                "message" => $distribuciones 
+                    ? "Paralelo y distribuciones eliminadas con éxito" 
+                    : "Paralelo eliminado con éxito"
+            ], 200);
+
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje: " . $e->getMessage());
+            Log::error("Línea: " . $e->getLine());
+
+            return response()->json([
+                "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
+        }
+    }
 
-        }   
+    public function checkDistribucionesPorParalelo($id)
+    {
+        try {
+            $distribuciones = \DB::table('distribuciones_horario_academica')
+                ->where('id_paralelo', $id)
+                ->where('estado', "A")
+                ->count();
+
+            return response()->json([
+                "ok" => true,
+                "count" => $distribuciones,
+            ], 200);
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje: " . $e->getMessage());
+            Log::error("Línea: " . $e->getLine());
+
+            return response()->json([
+                "ok" => false,
+                "message" => "Error interno en el servidor"
+            ], 500);
+        }
     }
 
     public function showParalelo()

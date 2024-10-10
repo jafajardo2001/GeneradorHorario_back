@@ -64,6 +64,8 @@ Route::prefix('istg')->group(
         Route::put("delete_nivel/{id}", [NivelController::class, 'deleteNivel']);
         //PARALELO
         Route::get("showParalelo/", [ParaleloController::class, 'showParalelo']);
+        Route::get("distribuciones_por_paralelo/{id}", [ParaleloController::class, 'checkDistribucionesPorParalelo']);
+        
         Route::put("update_paralelo/{id}", [ParaleloController::class, 'updateParalelo']);
         Route::post("create_paralelo/", [ParaleloController::class, 'storeParalelo']);
         Route::put("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
