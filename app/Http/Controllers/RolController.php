@@ -19,48 +19,62 @@ class RolController extends Controller
         $this->servicio_informe = new MensajeAlertasServicio();
     }
     public function storeRol(Request $request)
-    {
-        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
-        try {
-            // Verificar si el rol ya existe
-            $rolExistente = RolModel::where('descripcion', ucfirst(trim($request->descripcion)))
-                ->where('estado', 'A')
-                ->first();
+{
+    $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+    try {
+        // Verificar si el rol ya existe
+        $rolExistente = RolModel::where('descripcion', ucfirst(trim($request->descripcion)))
+            ->first(); // Busca tanto en activos como en eliminados
 
-            if ($rolExistente) {
+        if ($rolExistente) {
+            if ($rolExistente->estado === 'E') {
+                // Si el rol está eliminado, reactivarlo
+                $rolExistente->estado = 'A'; // Cambiar a activo
+                $rolExistente->ip_actualizacion = $request->ip();
+                $rolExistente->id_usuario_actualizo = auth()->id() ?? 1;
+                $rolExistente->fecha_actualizacion = Carbon::now();
+                $rolExistente->save();
+
+                return response()->json([
+                    "ok" => true,
+                    "message" => "Rol reactivado con éxito."
+                ], 200);
+            } else {
                 return response()->json([
                     "ok" => false,
-                    "message" => "El rol ya existe.",
+                    "message" => "El rol ya existe y está activo.",
                 ], 400);
             }
-
-            // Crear el nuevo rol y asignar valores
-            $modelo = new RolModel();
-            $modelo->descripcion = ucfirst(trim($request->descripcion));
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->fecha_creacion = Carbon::now();
-            $modelo->fecha_actualizacion = Carbon::now();
-            $modelo->estado = "A";
-            $modelo->save();
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Rol creado con éxito"
-            ], 200);
-
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje : " . $e->getMessage());
-            Log::error("Linea : " . $e->getLine());
-            return Response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
         }
+
+        // Crear el nuevo rol y asignar valores
+        $modelo = new RolModel();
+        $modelo->descripcion = ucfirst(trim($request->descripcion));
+        $modelo->ip_creacion = $request->ip();
+        $modelo->ip_actualizacion = $request->ip();
+        $modelo->id_usuario_creador = auth()->id() ?? 1;
+        $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+        $modelo->fecha_creacion = Carbon::now();
+        $modelo->fecha_actualizacion = Carbon::now();
+        $modelo->estado = "A";
+        $modelo->save();
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Rol creado con éxito"
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Linea : " . $e->getLine());
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
     }
+}
+
 
     public function deleteRol(Request $request, $id)
 {

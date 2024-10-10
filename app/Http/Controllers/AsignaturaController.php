@@ -108,48 +108,78 @@ class AsignaturaController extends Controller
     }
 
     public function deleteAsignatura(Request $request, $id)
+{
+    try {
+        $asignatura = AsignaturaModel::find($id);
+
+        if (!$asignatura) {
+            return response()->json([
+                "ok" => false,
+                "message" => "La asignatura no existe con el id $id"
+            ], 400);
+        }
+
+        // Verificar si hay distribuciones asociadas
+        $distribuciones = \DB::table('distribuciones_horario_academica')
+            ->where('id_materia', $id)
+            ->exists();
+
+        // Cambiar el estado de la asignatura a "E"
+        $asignatura->estado = "E";
+        $asignatura->id_usuario_creador = auth()->id() ?? 1;
+        $asignatura->ip_actualizacion = $request->ip();
+        $asignatura->fecha_actualizacion = now();
+        $asignatura->save();
+
+        // Si hay distribuciones asociadas, inhabilitarlas
+        if ($distribuciones) {
+            \DB::table('distribuciones_horario_academica')
+                ->where('id_materia', $id)
+                ->update(['estado' => 'E']);
+        }
+
+        return response()->json([
+            "ok" => true,
+            "message" => $distribuciones
+                ? "Asignatura y distribuciones eliminadas con éxito"
+                : "Asignatura eliminada con éxito"
+        ], 200);
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje: " . $e->getMessage());
+        Log::error("Línea: " . $e->getLine());
+
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor"
+        ], 500);
+    }
+}
+
+    public function distribucionesPorMateria($id)
     {
         try {
-            $asignatura = AsignaturaModel::find($id);
-
-            if (!$asignatura) {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "La asignatura no existe con el id $id"
-                ], 400);
-            }
-
-            $result = $asignatura->update([
-                "estado" => "E",
-                "id_usuario_creador" => auth()->id() ?? 1,
-                "ip_actualizacion" => $request->ip(),
-                "fecha_actualizacion" => now(),  // Estado cambiado a "E" para marcarlo como desactivado
-            ]);
-
-            if ($result) {
-                return response()->json([
-                    "ok" => true,
-                    "message" => "materia eliminada con éxito"
-                ], 200);
-            } else {
-                return response()->json([
-                    "ok" => false,
-                    "message" => "No se pudo eliminar la materia"
-                ], 400);
-            }
-
+            // Verificar si hay distribuciones asociadas a la materia
+            $existenDistribuciones = \DB::table('distribuciones_horario_academica')
+                ->where('id_materia', $id)
+                ->exists();
+    
+            return response()->json([
+                'ok' => true,
+                'distribuciones' => $existenDistribuciones
+            ], 200);
         } catch (Exception $e) {
             Log::error(__FILE__ . " > " . __FUNCTION__);
             Log::error("Mensaje: " . $e->getMessage());
             Log::error("Línea: " . $e->getLine());
-
+    
             return response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
         }
     }
-
+    
 public function updateAsignatura(Request $request, $id)
     {
         try {
