@@ -20,51 +20,67 @@ class JobController extends Controller
         $this->servicio_informe = new MensajeAlertasServicio();
     }
     public function storeJob(Request $request)
-    {
-        $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
-        try {
-            $request->validate([
-                'descripcion' => 'required|string|max:255',
-            ]);
-            // Verificar si el rol ya existe
-            $jobExistente = JobModel::where('descripcion', ucfirst(trim($request->descripcion)))
-                ->where('estado', 'A')
-                ->first();
+{
+    $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
+    try {
+        $request->validate([
+            'descripcion' => 'required|string|max:255',
+        ]);
 
-            if ($jobExistente) {
+        // Verificar si el job ya existe
+        $jobExistente = JobModel::where('descripcion', ucfirst(trim($request->descripcion)))
+            ->first();
+
+        if ($jobExistente) {
+            if ($jobExistente->estado === 'E') {
+                // Si el job está eliminado, cambiar su estado a "A"
+                $jobExistente->estado = 'A'; // Cambia el estado a Activo
+                $jobExistente->ip_actualizacion = $request->ip(); // Actualiza la IP
+                $jobExistente->id_usuario_actualizo = auth()->id() ?? 1; // Actualiza el usuario que hace el cambio
+                $jobExistente->fecha_actualizacion = Carbon::now(); // Actualiza la fecha
+                $jobExistente->save(); // Guarda los cambios
+
+                return response()->json([
+                    "ok" => true,
+                    "message" => "Tiempo de dedicación activado con éxito."
+                ], 200);
+            } else {
+                // Si ya está activo, retornamos un mensaje de error
                 return response()->json([
                     "ok" => false,
-                    "message" => "El tiempo de dedicacion ya existe.",
+                    "message" => "El tiempo de dedicación ya existe."
                 ], 400);
             }
-
-            // Crear el nuevo Tiempo y asignar valores
-            $modelo = new JobModel();
-            $modelo->descripcion = ucfirst(trim($request->descripcion));
-            $modelo->ip_creacion = $request->ip();
-            $modelo->ip_actualizacion = $request->ip();
-            $modelo->id_usuario_creador = auth()->id() ?? 1;
-            $modelo->id_usuario_actualizo = auth()->id() ?? 1;
-            $modelo->fecha_creacion = Carbon::now();
-            $modelo->fecha_actualizacion = Carbon::now();
-            $modelo->estado = "A";
-            $modelo->save();
-
-            return Response()->json([
-                "ok" => true,
-                "message" => "Tiempo de dedicacion creado con éxito"
-            ], 200);
-
-        } catch (Exception $e) {
-            Log::error(__FILE__ . " > " . __FUNCTION__);
-            Log::error("Mensaje : " . $e->getMessage());
-            Log::error("Linea : " . $e->getLine());
-            return Response()->json([
-                "ok" => false,
-                "message" => "Error interno en el servidor"
-            ], 500);
         }
+
+        // Crear el nuevo Job y asignar valores
+        $modelo = new JobModel();
+        $modelo->descripcion = ucfirst(trim($request->descripcion));
+        $modelo->ip_creacion = $request->ip();
+        $modelo->ip_actualizacion = $request->ip();
+        $modelo->id_usuario_creador = auth()->id() ?? 1;
+        $modelo->id_usuario_actualizo = auth()->id() ?? 1;
+        $modelo->fecha_creacion = Carbon::now();
+        $modelo->fecha_actualizacion = Carbon::now();
+        $modelo->estado = "A"; // Estado activo
+        $modelo->save();
+
+        return response()->json([
+            "ok" => true,
+            "message" => "Tiempo de dedicación creado con éxito."
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error(__FILE__ . " > " . __FUNCTION__);
+        Log::error("Mensaje : " . $e->getMessage());
+        Log::error("Linea : " . $e->getLine());
+        return response()->json([
+            "ok" => false,
+            "message" => "Error interno en el servidor."
+        ], 500);
     }
+}
+
 
     public function getJobs(Request $request)
     {
