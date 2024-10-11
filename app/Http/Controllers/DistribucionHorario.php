@@ -304,20 +304,21 @@ public function updateDistribucion(Request $request, $id)
         if ($materiasPorDia >= $materiasPorDiaLimite) {
             return response()->json([
                 "ok" => false,
-                "mensaje" => "El día " . ($data['dia'] ?? $distribucion->dia) . " ya tiene el límite de {$materiasPorDiaLimite} materias para un docente de " . $job->job_descripcion
+                "mensaje" => "El día " . ($data['dia'] ?? $distribucion->dia) . " ya tiene el límite de {$materiasPorDiaLimite} horas para un docente de " . $job->job_descripcion
             ], 400);
         }
 
-        // Validar límite semanal de materias
+        // Validar límite semanal de materias, excluyendo la distribución actual
         $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
             ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
             ->where("estado", "A")
+            ->where("id_distribucion", "<>", $id) // Excluir la distribución actual
             ->count();
 
         if ($materiasPorSemana >= $materiasPorSemanaLimite) {
             return response()->json([
                 "ok" => false,
-                "mensaje" => "Ya se alcanzó el límite de {$materiasPorSemanaLimite} materias para la semana de un docente de " . $job->job_descripcion
+                "mensaje" => "Ya se alcanzó el límite de {$materiasPorSemanaLimite} horas para la semana de un docente de " . $job->job_descripcion
             ], 400);
         }
 
@@ -368,6 +369,7 @@ public function updateDistribucion(Request $request, $id)
         ], 500);
     }
 }
+
 
 
 

@@ -244,7 +244,7 @@ public function updateAsignatura(Request $request, $id)
                 "nivel.termino"    // Selecciona el término
             )
             ->join('nivel', 'materias.id_nivel', '=', 'nivel.id_nivel')  // Une la tabla de niveles
-            ->whereIn("materias.estado", ["A", "I"])  // Solo selecciona asignaturas activas o inactivas
+            ->whereIn("materias.estado", ["A"])  // Solo selecciona asignaturas activas o inactivas
             ->get();
             Log::info('Verificación de existencia de usuario completada.', ['asignaturas' => $asignaturas]);
 
