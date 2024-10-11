@@ -191,7 +191,8 @@ class DistribucionHorario extends Controller
             "usuarios.id_usuario as id_usuario",
             "nivel.id_nivel as idnivel",
             "materias.id_materia as idmateria",
-            
+            "paralelo.id_paralelo as idparalelo",
+
             "carreras.id_carrera as idcarrera",
 
             "paralelo.paralelo",
@@ -247,126 +248,127 @@ class DistribucionHorario extends Controller
 
 
 
-    public function updateDistribucion(Request $request, $id)
-    {
-        try {
-            // Buscar la distribución por ID
-            $distribucion = ModelsDistribucionHorario::find($id);
+public function updateDistribucion(Request $request, $id)
+{
+    try {
+        // Buscar la distribución por ID
+        $distribucion = ModelsDistribucionHorario::find($id);
 
-            if (!$distribucion) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "El registro no existe con el ID $id."
-                ], 400);
-            }
-
-            // Obtener los datos de la solicitud
-            $data = $request->only([
-                'id_docente',
-                'id_periodo_academico',
-                'id_educacion_global',
-                'id_materia',
-                'id_carrera',
-
-                'id_nivel',
-                'id_paralelo',
-                'dia',
-                'hora_inicio',
-                'hora_termina',
-                'estado'
-            ]);
-
-            // Obtener el tipo de trabajo del docente
-            $job = DB::table('usuarios')
-                ->join('job', 'usuarios.id_job', '=', 'job.id_job')
-                ->where('usuarios.id_usuario', $data['id_docente'] ?? $distribucion->id_docente)
-                ->select('job.descripcion as job_descripcion')
-                ->first();
-
-            if (!$job) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "No se pudo determinar el tipo de trabajo del docente."
-                ], 400);
-            }
-
-            // Definir los límites según el tipo de trabajo
-            $materiasPorDiaLimite = $job->job_descripcion === 'Tiempo Completo' ? 8 : 4;
-            $materiasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
-
-            // Validar límite diario de materias
-            $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
-                ->where("dia", $data['dia'] ?? $distribucion->dia)
-                ->where("estado", "A")
-                ->count();
-
-            if ($materiasPorDia >= $materiasPorDiaLimite) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "El día " . ($data['dia'] ?? $distribucion->dia) . " ya tiene el límite de {$materiasPorDiaLimite} materias para un docente de " . $job->job_descripcion
-                ], 400);
-            }
-
-            // Validar límite semanal de materias
-            $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
-                ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
-                ->where("estado", "A")
-                ->count();
-
-            if ($materiasPorSemana >= $materiasPorSemanaLimite) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "Ya se alcanzó el límite de {$materiasPorSemanaLimite} materias para la semana de un docente de " . $job->job_descripcion
-                ], 400);
-            }
-
-            // Validar solapamiento de horarios
-            $exists = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
-                ->where("dia", $data['dia'] ?? $distribucion->dia)
-                ->where("hora_inicio", $data['hora_inicio'] ?? $distribucion->hora_inicio)
-                ->where("hora_termina", $data['hora_termina'] ?? $distribucion->hora_termina)
-                ->where("estado", "A")
-                ->where("id_distribucion", "<>", $id)
-                ->exists();
-
-            if ($exists) {
-                return response()->json([
-                    "ok" => false,
-                    "mensaje" => "Ya existe una distribución con el mismo horario para el día " . ($data['dia'] ?? $distribucion->dia) . "."
-                ], 400);
-            }
-
-            // Actualizar los campos condicionalmente
-            $distribucion->update([
-                "id_usuario" => $data['id_docente'] ?? $distribucion->id_docente,
-                "id_periodo_academico" => $data['id_periodo_academico'] ?? $distribucion->id_periodo_academico,
-                "id_educacion_global" => $data['id_educacion_global'] ?? $distribucion->id_educacion_global,
-                "id_materia" => $data['id_materia'] ?? $distribucion->id_materia,
-                "id_carrera" => $data['id_carrera'] ?? $distribucion->id_carrera,
-                "id_nivel" => $data['id_nivel'] ?? $distribucion->id_nivel,
-                "id_paralelo" => $data['id_paralelo'] ?? $distribucion->id_paralelo,
-                "dia" => $data['dia'] ?? $distribucion->dia,
-                "hora_inicio" => $data['hora_inicio'] ?? $distribucion->hora_inicio,
-                "hora_termina" => $data['hora_termina'] ?? $distribucion->hora_termina,
-                "fecha_actualizacion" => now(),
-                "id_usuario_actualizo" => auth()->id() ?? 1,
-                "ip_actualizo" => $request->ip(),
-                "estado" => $data['estado'] ?? $distribucion->estado
-            ]);
-
-            return response()->json([
-                "ok" => true,
-                "mensaje" => "Distribución actualizada con éxito."
-            ], 200);
-
-        } catch (Exception $e) {
-            Log::error("Error: " . $e->getMessage() . " en la línea " . $e->getLine());
+        if (!$distribucion) {
             return response()->json([
                 "ok" => false,
-                "mensaje" => "Error interno en el servidor: " . $e->getMessage()
-            ], 500);
+                "mensaje" => "El registro no existe con el ID $id."
+            ], 400);
         }
+
+        // Obtener los datos de la solicitud
+        $data = $request->only([
+            'id_docente',
+            'id_periodo_academico',
+            'id_educacion_global',
+            'id_materia',
+            'id_carrera',
+            'id_nivel',
+            'id_paralelo',
+            'dia',
+            'hora_inicio',
+            'hora_termina',
+            'estado'
+        ]);
+
+        // Obtener el tipo de trabajo del docente
+        $job = DB::table('usuarios')
+            ->join('job', 'usuarios.id_job', '=', 'job.id_job')
+            ->where('usuarios.id_usuario', $data['id_docente'] ?? $distribucion->id_docente)
+            ->select('job.descripcion as job_descripcion')
+            ->first();
+
+        if (!$job) {
+            return response()->json([
+                "ok" => false,
+                "mensaje" => "No se pudo determinar el tipo de trabajo del docente."
+            ], 400);
+        }
+
+        // Definir los límites según el tipo de trabajo
+        $materiasPorDiaLimite = $job->job_descripcion === 'Tiempo Completo' ? 8 : 4;
+        $materiasPorSemanaLimite = $job->job_descripcion === 'Tiempo Completo' ? 40 : 20;
+
+        // Validar límite diario de materias, excluyendo la distribución actual
+        $materiasPorDia = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
+            ->where("dia", $data['dia'] ?? $distribucion->dia)
+            ->where("estado", "A")
+            ->where("id_distribucion", "<>", $id) // Excluir la distribución actual
+            ->count();
+
+        if ($materiasPorDia >= $materiasPorDiaLimite) {
+            return response()->json([
+                "ok" => false,
+                "mensaje" => "El día " . ($data['dia'] ?? $distribucion->dia) . " ya tiene el límite de {$materiasPorDiaLimite} materias para un docente de " . $job->job_descripcion
+            ], 400);
+        }
+
+        // Validar límite semanal de materias
+        $materiasPorSemana = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
+            ->whereBetween("fecha_creacion", [now()->startOfWeek(), now()->endOfWeek()])
+            ->where("estado", "A")
+            ->count();
+
+        if ($materiasPorSemana >= $materiasPorSemanaLimite) {
+            return response()->json([
+                "ok" => false,
+                "mensaje" => "Ya se alcanzó el límite de {$materiasPorSemanaLimite} materias para la semana de un docente de " . $job->job_descripcion
+            ], 400);
+        }
+
+        // Validar solapamiento de horarios
+        $exists = ModelsDistribucionHorario::where("id_usuario", $data['id_docente'] ?? $distribucion->id_docente)
+            ->where("dia", $data['dia'] ?? $distribucion->dia)
+            ->where("hora_inicio", $data['hora_inicio'] ?? $distribucion->hora_inicio)
+            ->where("hora_termina", $data['hora_termina'] ?? $distribucion->hora_termina)
+            ->where("estado", "A")
+            ->where("id_distribucion", "<>", $id)
+            ->exists();
+
+        if ($exists) {
+            return response()->json([
+                "ok" => false,
+                "mensaje" => "Ya existe una distribución con el mismo horario para el día " . ($data['dia'] ?? $distribucion->dia) . "."
+            ], 400);
+        }
+
+        // Actualizar los campos condicionalmente
+        $distribucion->update([
+            "id_usuario" => $data['id_docente'] ?? $distribucion->id_docente,
+            "id_periodo_academico" => $data['id_periodo_academico'] ?? $distribucion->id_periodo_academico,
+            "id_educacion_global" => $data['id_educacion_global'] ?? $distribucion->id_educacion_global,
+            "id_materia" => $data['id_materia'] ?? $distribucion->id_materia,
+            "id_carrera" => $data['id_carrera'] ?? $distribucion->id_carrera,
+            "id_nivel" => $data['id_nivel'] ?? $distribucion->id_nivel,
+            "id_paralelo" => $data['id_paralelo'] ?? $distribucion->id_paralelo,
+            "dia" => $data['dia'] ?? $distribucion->dia,
+            "hora_inicio" => $data['hora_inicio'] ?? $distribucion->hora_inicio,
+            "hora_termina" => $data['hora_termina'] ?? $distribucion->hora_termina,
+            "fecha_actualizacion" => now(),
+            "id_usuario_actualizo" => auth()->id() ?? 1,
+            "ip_actualizo" => $request->ip(),
+            "estado" => $data['estado'] ?? $distribucion->estado
+        ]);
+
+        return response()->json([
+            "ok" => true,
+            "mensaje" => "Distribución actualizada con éxito."
+        ], 200);
+
+    } catch (Exception $e) {
+        Log::error("Error: " . $e->getMessage() . " en la línea " . $e->getLine());
+        return response()->json([
+            "ok" => false,
+            "mensaje" => "Error interno en el servidor: " . $e->getMessage()
+        ], 500);
     }
+}
+
 
 
 
