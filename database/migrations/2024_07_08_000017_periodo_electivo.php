@@ -13,8 +13,8 @@ return new class extends Migration
     {
         Schema::create('periodo_electivo', function (Blueprint $table) {
             $table->id('id_periodo'); // Bigint primary key
-            $table->date('inicia');
-            $table->date('termina');
+            $table->string('anio', 4); // Solo 4 caracteres para almacenar el año
+            $table->text('periodo');
             $table->string('ip_creacion', 45)->nullable();
             $table->string('ip_actualizacion', 45);
             $table->integer('id_usuario_creador');
@@ -23,6 +23,7 @@ return new class extends Migration
             $table->date('fecha_actualizacion');
             $table->enum('estado', ['A', 'E', 'I'])->default('A');
         });
+        
     }
 
     /**

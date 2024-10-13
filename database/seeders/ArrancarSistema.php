@@ -16,7 +16,6 @@ use App\Models\JobModel;
 use App\Models\JornadaModel;
 use App\Models\UsuarioModel;
 use App\Models\TituloAcademicoModel;
-use Carbon\CarbonConverterInterface;
 
 class ArrancarSistema extends Seeder
 {
@@ -25,7 +24,7 @@ class ArrancarSistema extends Seeder
      */
     public function run(): void
     {
-
+        // Crear Título Académico
         TituloAcademicoModel::create([
             "descripcion" => "Ingeniero en sistemas",
             "ip_creacion" => "127.0.0.1",
@@ -35,6 +34,8 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
+
+        // Crear Nivel
         NivelModel::create([
             "numero" => "1",
             "nemonico" => "1",
@@ -47,9 +48,10 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
+
+        // Insertar Roles
         RolModel::insert([
             [
-                // Dejar id_rol fuera
                 "descripcion" => "sin perfil",
                 "ip_creacion" => "127.0.0.1",
                 "ip_actualizacion" => "127.0.0.1",
@@ -60,7 +62,6 @@ class ArrancarSistema extends Seeder
                 "estado" => "E"
             ],
             [
-                // Dejar id_rol fuera
                 "descripcion" => "Administrador",
                 "ip_creacion" => "127.0.0.1",
                 "ip_actualizacion" => "127.0.0.1",
@@ -72,7 +73,8 @@ class ArrancarSistema extends Seeder
             ]
         ]);
         
-        JobModel::insert([
+        // Crear Job (Tiempo Completo)
+        JobModel::create([
             "descripcion" => "Tiempo Completo",
             "ip_creacion" => "127.0.0.1",
             "ip_actualizacion" => "127.0.0.1",
@@ -82,32 +84,34 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
+
+        // Insertar Jornada
         JornadaModel::insert([
-    
-        [
-            "descripcion" => "Matutina",
-            "ip_creacion" => "127.0.0.1",
-            "ip_actualizacion" => "127.0.0.1",
-            "id_usuario_creador" => 1,
-            "id_usuario_actualizo" => 1,
-            "fecha_creacion" => Carbon::now(),
-            "fecha_actualizacion" => Carbon::now(),
-            "estado" => "A"
-        ],
+            [
+                "descripcion" => "Matutina",
+                "ip_creacion" => "127.0.0.1",
+                "ip_actualizacion" => "127.0.0.1",
+                "id_usuario_creador" => 1,
+                "id_usuario_actualizo" => 1,
+                "fecha_creacion" => Carbon::now(),
+                "fecha_actualizacion" => Carbon::now(),
+                "estado" => "A"
+            ],
         ]);
-        if(RolModel::find(1)){
+
+        // Crear Usuario Admin si existe el rol con ID 1
+        if (RolModel::find(1)) {
             UsuarioModel::create([
                 "cedula" => "0987654321",
                 "nombres" => "Admin Admin",
                 "apellidos" => "Administrador Administrador",
-                "correo" =>"admin@admin.com",
+                "correo" => "admin@admin.com",
                 "telefono" => "0987654321",
                 "usuario" => "Admin",
                 "clave" => bcrypt("_Admin#2023*"),
                 "id_rol" => 2,
                 "id_titulo_academico" => 1,
-                "id_job" =>1,
-
+                "id_job" => 1,
                 "ip_creacion" => "127.0.0.1",
                 "ip_actualizacion" => "127.0.0.1",
                 "id_usuario_creador" => 1,
@@ -117,9 +121,11 @@ class ArrancarSistema extends Seeder
                 "estado" => "A"
             ]);
         }
+
+        // Crear Periodo Electivo
         PeriodoElectivoModel::create([
-            "inicia" => Carbon::now(),
-            "termina" => Carbon::now(),
+            "anio" => "2024", // Corregido de 'anios' a 'anio'
+            "periodo" => "Periodo 1",
             "ip_creacion" => "127.0.0.1",
             "ip_actualizacion" => "127.0.0.1",
             "id_usuario_creador" => 1,
@@ -128,28 +134,26 @@ class ArrancarSistema extends Seeder
             "fecha_actualizacion" => Carbon::now(),
             "estado" => "A"
         ]);
-
+        
+        // Crear Carrera
         CarreraModel::create([
-            
-            [
-                "nombre" => "Desarrollo de software",
-                "ip_creacion" => "127.0.0.1",
-                "ip_actualizacion" => "127.0.0.1",
-                "id_usuario_creador" => 1,
-                "id_jornada" => 1,
-                "id_usuario_actualizo" => 1,
-                "fecha_creacion" => Carbon::now(),
-                "fecha_actualizacion" => Carbon::now(),
-                "estado" => "A"
-            ],
+            "nombre" => "Desarrollo de software",
+            "ip_creacion" => "127.0.0.1",
+            "ip_actualizacion" => "127.0.0.1",
+            "id_usuario_creador" => 1,
+            "id_jornada" => 1,
+            "id_usuario_actualizo" => 1,
+            "fecha_creacion" => Carbon::now(),
+            "fecha_actualizacion" => Carbon::now(),
+            "estado" => "A"
         ]);
         
-
+        // Crear Instituto
         InstitutoModel::create([
             "nombre" => "Instituto tecnologico de Guayaquil",
             "codigo" => "ISTG-124",
             "ubicacion" => "",
-            "Descripcion" => "",
+            "descripcion" => "", // Corregido de 'Descripcion' a 'descripcion'
             "nemonico" => "ISTG",
             "nivel_educacion" => "INSTITUTO",
             "jornada" => "NOCTURNA",

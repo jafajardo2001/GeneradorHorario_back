@@ -23,13 +23,12 @@ class DistribucionHorario extends Controller
         DB::beginTransaction();
         $detalles = $request->input("data");
         $idUsuario = $request->input("id_usuario"); 
-        $idPeriodoElectivo = 1;
+        $idPeriodoElectivo = $request->input("id_periodo");
         $idEducacionGlobal = 1;
 
         // Loguear información inicial
         Log::info('Detalles del horario a insertar', ['detalles' => $detalles]);
         Log::info('ID Usuario', ['id_usuario' => $idUsuario]);
-        Log::info('ID Periodo Electivo', ['id_periodo_electivo' => $idPeriodoElectivo]);
         Log::info('ID Educación Global', ['id_educacion_global' => $idEducacionGlobal]);
 
         // Obtener el tipo de trabajo del docente
@@ -104,12 +103,12 @@ class DistribucionHorario extends Controller
         });
 
         // Proceso de inserción
-        $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario, $idPeriodoElectivo, $idEducacionGlobal) {
+        $insert_data = collect($detalles)->map(function ($values) use ($request, $idUsuario,  $idEducacionGlobal) {
             $values = (object)$values;
 
             // Validar solapamiento de horarios
             $consulta = ModelsDistribucionHorario::where("id_usuario", $idUsuario)
-                ->where("id_periodo_academico", $idPeriodoElectivo)
+                ->where("id_periodo_academico", $values->id_periodo)
                 ->where("id_educacion_global", $idEducacionGlobal)
                 ->where("id_carrera", $values->id_carrera)
                 ->where("id_materia", $values->id_materia)
@@ -129,7 +128,7 @@ class DistribucionHorario extends Controller
 
             return [
                 "id_usuario" => $idUsuario,
-                "id_periodo_academico" => $idPeriodoElectivo,
+                "id_periodo_academico" =>$values->id_periodo,
                 "id_educacion_global" => $idEducacionGlobal,
                 "id_carrera" => $values->id_carrera,
                 "id_materia" => $values->id_materia,
@@ -178,7 +177,7 @@ class DistribucionHorario extends Controller
 
 
 
-    public function showDistribucion(Request $request)
+public function showDistribucion(Request $request)
 {
     try {
         $data = ModelsDistribucionHorario::select(
@@ -190,40 +189,78 @@ class DistribucionHorario extends Controller
             "id_distribucion as id_distribucion",
             "usuarios.id_usuario as id_usuario",
             "nivel.id_nivel as idnivel",
+            
             "materias.id_materia as idmateria",
             "paralelo.id_paralelo as idparalelo",
-
             "carreras.id_carrera as idcarrera",
-
             "paralelo.paralelo",
-            
             "distribuciones_horario_academica.dia",
             "distribuciones_horario_academica.hora_inicio",
             "distribuciones_horario_academica.hora_termina",
             "distribuciones_horario_academica.fecha_actualizacion",
+            "periodo_electivo.estado as estado_periodo", 
             DB::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_docente"),
             "usuarios.cedula as cedula_docente",
             "usuarios.correo as correo_docente",
             "usuarios.telefono as telefono_docente",
             "titulo_academico.descripcion as titulo_academico_docente",
+            "distribuciones_horario_academica.id_periodo_academico as idperiodo",
+            "periodo_electivo.anio",
+            "periodo_electivo.periodo",
+
             "job.id_job",
             "job.descripcion as job_descripcion",
             "jornada.descripcion as jornada_descripcion" // Nueva columna seleccionada
         )
-        ->join("educacion_global", "distribuciones_horario_academica.id_educacion_global", "=", "educacion_global.id_educacion_global")
-        ->join("carreras", "distribuciones_horario_academica.id_carrera", "=", "carreras.id_carrera")
-        ->join("materias", "distribuciones_horario_academica.id_materia", "=", "materias.id_materia")
-        ->join("nivel", "distribuciones_horario_academica.id_nivel", "=", "nivel.id_nivel")
-        ->join("paralelo", "distribuciones_horario_academica.id_paralelo", "=", "paralelo.id_paralelo")
-        ->join("usuarios", "distribuciones_horario_academica.id_usuario", "=", "usuarios.id_usuario")
-        ->join("rol", "usuarios.id_rol", "=", "rol.id_rol")
-        ->join("titulo_academico", "usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
-        ->leftJoin("job", "usuarios.id_job", "=", "job.id_job")
-        ->join("jornada", "carreras.id_jornada", "=", "jornada.id_jornada") // Nuevo JOIN con jornada
+        ->join("educacion_global", function($join) {
+            $join->on("distribuciones_horario_academica.id_educacion_global", "=", "educacion_global.id_educacion_global")
+                ->where("educacion_global.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("carreras", function($join) {
+            $join->on("distribuciones_horario_academica.id_carrera", "=", "carreras.id_carrera")
+                ->where("carreras.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("materias", function($join) {
+            $join->on("distribuciones_horario_academica.id_materia", "=", "materias.id_materia")
+                ->where("materias.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("nivel", function($join) {
+            $join->on("distribuciones_horario_academica.id_nivel", "=", "nivel.id_nivel")
+                ->where("nivel.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("paralelo", function($join) {
+            $join->on("distribuciones_horario_academica.id_paralelo", "=", "paralelo.id_paralelo")
+                ->where("paralelo.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("periodo_electivo", function($join) {
+            $join->on("distribuciones_horario_academica.id_periodo_academico", "=", "periodo_electivo.id_periodo")
+                ->where("periodo_electivo.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("usuarios", function($join) {
+            $join->on("distribuciones_horario_academica.id_usuario", "=", "usuarios.id_usuario")
+                ->where("usuarios.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("rol", function($join) {
+            $join->on("usuarios.id_rol", "=", "rol.id_rol")
+                ->where("rol.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("titulo_academico", function($join) {
+            $join->on("usuarios.id_titulo_academico", "=", "titulo_academico.id_titulo_academico")
+                ->where("titulo_academico.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->leftJoin("job", function($join) {
+            $join->on("usuarios.id_job", "=", "job.id_job")
+                ->where("job.estado", "=", "A"); // Filtrar por estado 'A'
+        })
+        ->join("jornada", function($join) {
+            $join->on("carreras.id_jornada", "=", "jornada.id_jornada")
+                ->where("jornada.estado", "=", "A"); // Filtrar por estado 'A'
+        })
         ->where("rol.descripcion", "=", "Docente")
-        ->where("distribuciones_horario_academica.estado", "=", "A")
+        ->where("distribuciones_horario_academica.estado", "=", "A") // Filtro principal
         ->orderBy("distribuciones_horario_academica.dia")
         ->get();
+         
         
         return response()->json([
             "ok" => true,
@@ -242,6 +279,7 @@ class DistribucionHorario extends Controller
         ], 500);
     }
 }
+
 
 
 // App/Http/Controllers/DistribucionHorarioController.php

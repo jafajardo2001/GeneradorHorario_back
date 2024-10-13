@@ -10,7 +10,7 @@ class DistribucionHorario extends Model
     use HasFactory;
     protected $table = "distribuciones_horario_academica";
     protected $primaryKey = "id_distribucion";
-    protected $fillable = ["id_educacion_global","id_carrera","id_usuario","id_nivel","id_paralelo","id_periodo_electivo","id_materia","hora_inicio","hora_termina","dia","ip_creacion","ip_actualizacion","id_usuario_creador","id_usuario_actualizo","fecha_creacion","fecha_actualizacion","estado"];
+    protected $fillable = ["id_educacion_global","id_carrera","id_usuario","id_nivel","id_paralelo","id_periodo_academico","id_materia","hora_inicio","hora_termina","dia","ip_creacion","ip_actualizacion","id_usuario_creador","id_usuario_actualizo","fecha_creacion","fecha_actualizacion","estado"];
 
     const CREATED_AT = 'fecha_creacion';
     const UPDATED_AT = 'fecha_actualizacion';
@@ -31,7 +31,7 @@ class DistribucionHorario extends Model
         return $this->belongsTo(ParaleloModel::class,"id_paralelo","id_paralelo");
     }
     public function PeriodoAcademico(){
-        return $this->belongsTo(PeriodoElectivoModel::class,"id_periodo_academico","id_periodo_electivo");
+        return $this->belongsTo(PeriodoElectivoModel::class,"id_periodo_academico","id_periodo");
     }
     public function Materia(){
         return $this->belongsTo(AsignaturaModel::class,"id_materia","id_materia");

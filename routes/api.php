@@ -12,6 +12,7 @@ use App\Http\Controllers\DistribucionHorario;
 use App\Http\Controllers\ParaleloController;
 use App\Http\Controllers\PlanificacionAcademica;
 use App\Http\Controllers\UsuarioController;
+use App\Http\Controllers\PeriodoElectivoController;
 use App\Http\Controllers\RolController;
 use App\Http\Controllers\JornadaController;
 use App\Http\Middleware\AutenticacionSistema;
@@ -35,6 +36,12 @@ Route::post('autenticar_sistema_istg',[AutenticacionController::class,'autentica
 //middleware('auth.sanctum')
 Route::prefix('istg')->group(
     function () {
+        Route::post('create_periodo_electivo', [PeriodoElectivoController::class, 'create']);
+        Route::put('update_periodo_electivo/{id}', [PeriodoElectivoController::class, 'updatePeriodoElectivo']);
+        Route::get("distribuciones_por_periodo/{id}", [PeriodoElectivoController::class, 'checkDistribucionesPorPeriodo']);
+
+        Route::get('show_data_periodo_electivo', [PeriodoElectivoController::class, 'show_data_periodo_electivo']);
+        Route::put('delete_periodo_electivo/{id}', [PeriodoElectivoController::class, 'deletePeriodoElectivo']);
         //INSTITUTO
         Route::get("show_data_instituto/", [InstitutoController::class, 'showInstituto']);
         Route::put("update_instituto/", [InstitutoController::class, 'updateInstituto']);
@@ -94,6 +101,8 @@ Route::prefix('istg')->group(
         Route::put("update_rol/{id}", [RolController::class, 'updateRol']);
 
         // //Tiempo
+
+
         Route::get("show_jobs/", [JobController::class, 'getJobs']);
         Route::post("create_job/", [JobController::class, 'storeJob']);
         Route::put("update_job/{id}", [JobController::class, 'updateJob']);
