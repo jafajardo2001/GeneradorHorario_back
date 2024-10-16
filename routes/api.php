@@ -76,7 +76,7 @@ Route::prefix('istg')->group(
         //PARALELO
         Route::get("showParalelo/", [ParaleloController::class, 'showParalelo']);
         Route::get("distribuciones_por_paralelo/{id}", [ParaleloController::class, 'checkDistribucionesPorParalelo']);
-        
+
         Route::put("update_paralelo/{id}", [ParaleloController::class, 'updateParalelo']);
         Route::post("create_paralelo/", [ParaleloController::class, 'storeParalelo']);
         Route::put("delete_paralelo/{id}", [ParaleloController::class, 'deleteParalelo']);
@@ -89,6 +89,7 @@ Route::prefix('istg')->group(
         Route::get("show_docentes/", [UsuarioController::class, 'showDocentes']);
         Route::get("show_coordinadorc/", [UsuarioController::class, 'showCoordinadorC']);
         Route::get("show_coordinador_a/", [UsuarioController::class, 'showCoordinadorA']);
+        Route::get("show_gestorth/", [UsuarioController::class,"showGestorTH"]);
         Route::get("obtener_docentes_por_carrera/{idCarrera}", [UsuarioController::class, 'obtenerDocentesPorCarrera']);
         Route::get("show_usuario/", [UsuarioController::class, 'showUsuarios']);
         Route::get('/usuarios/{id}', [UsuarioController::class, 'show']);
@@ -108,7 +109,7 @@ Route::prefix('istg')->group(
         Route::put("update_job/{id}", [JobController::class, 'updateJob']);
         Route::put("delete_job/{id}", [JobController::class, 'deleteJob']);
 
-        // //Jornada   
+        // //Jornada
         Route::get("show_jornada/", [JornadaController::class, 'getJornada']);
         Route::post("create_jornada/", [JornadaController::class, 'storeJornada']);
         Route::put("delete_jornada/{id}", [JornadaController::class, 'deleteJornada']);
@@ -119,7 +120,7 @@ Route::prefix('istg')->group(
         Route::put("update_titulo_academico/{id}", [TituloAcademicoController::class, 'updateTituloAcademico']);
         Route::put("delete_titulo_academico/{id}", [TituloAcademicoController::class, 'deleteTituloAcademico']);
         Route::get("show_data_titulo_academico/", [TituloAcademicoController::class, 'getTituloAcademico']);
-        
+
         // distribucion
         Route::group(
             [

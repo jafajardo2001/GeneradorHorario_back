@@ -34,7 +34,7 @@ class UsuarioController extends Controller
 
         // Validar campos requeridos
         $modelo = new UsuarioModel();
-        
+
 
             // Verificar si se necesita validar las carreras y jornadas dependiendo del rol
             if ($request->id_rol == RolModel::where('descripcion', '=', 'Docente')->first()->id_rol) {
@@ -207,7 +207,7 @@ class UsuarioController extends Controller
                 "data" => $docentes
             ], 200);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Manejo de errores
             return response()->json([
                 "ok" => false,
@@ -221,7 +221,7 @@ class UsuarioController extends Controller
     {
         try {
             $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
-    
+
             // Selecciona los datos requeridos, incluyendo las carreras asociadas al usuario
             $usuarios = UsuarioModel::with(['carreras.jornada']) // Cargar carreras y sus jornadas
                 ->select(
@@ -248,7 +248,7 @@ class UsuarioController extends Controller
                 ->leftJoin("usuarios as creador", "usuarios.id_usuario_creador", "=", "creador.id_usuario")
                 ->where("usuarios.estado", "A")
                 ->get();
-    
+
             // Transformar los datos para incluir la jornada en el resultado
             $usuarios = $usuarios->map(function ($usuario) {
                 $usuario->carreras->transform(function ($carrera) {
@@ -258,7 +258,7 @@ class UsuarioController extends Controller
                 });
                 return $usuario;
             });
-    
+
             return response()->json([
                 "ok" => true,
                 "data" => $usuarios
@@ -267,14 +267,14 @@ class UsuarioController extends Controller
             log::error(__FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Línea : " . $e->getLine());
-    
+
             return response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
         }
     }
-    
+
 
 
 
@@ -305,7 +305,7 @@ class UsuarioController extends Controller
                 "titulo_academico.descripcion as titulo_academico", // Título académico
             )
             ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
-            
+
             ->where('id_rol', '=', $rolDocente->id_rol)
             ->where('usuarios.estado', '=', 'A')
             ->get();
@@ -383,7 +383,7 @@ class UsuarioController extends Controller
                 "titulo_academico.descripcion as titulo_academico", // Título académico
             )
             ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
-            
+
             ->where('id_rol', '=', $rolCoordinador->id_rol)
             ->where('usuarios.estado', '=', 'A')
             ->get();
@@ -400,7 +400,7 @@ class UsuarioController extends Controller
         if (!$rolCoordinador) {
             return response()->json([
                 "ok" => false,
-                "message" => "Rol Docente no encontrado"
+                "message" => "Rol Coorindador de Carrera no encontrado"
             ], 404);
         }
 
@@ -439,13 +439,13 @@ class UsuarioController extends Controller
         try {
             // Obtener el ID del rol "Docente"
             $rolCoordinadorA = RolModel::select('id_rol')
-                ->where('descripcion', '=', 'Coordinador Academico') 
+                ->where('descripcion', '=', 'Coordinador Academico')
                 ->first();
 
             if (!$rolCoordinadorA) {
                 return response()->json([
                     "ok" => false,
-                    "message" => "Rol Coordinador de Academico no encontrado"
+                    "message" => "Rol Coordinador Academico no encontrado"
                 ], 404);
             }
 
@@ -461,7 +461,7 @@ class UsuarioController extends Controller
                 "titulo_academico.descripcion as titulo_academico", // Título académico
             )
             ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
-            
+
             ->where('id_rol', '=', $rolCoordinadorA->id_rol)
             ->where('usuarios.estado', '=', 'A')
             ->get();
@@ -478,7 +478,7 @@ class UsuarioController extends Controller
         if (!$rolCoordinadorA) {
             return response()->json([
                 "ok" => false,
-                "message" => "Rol Docente no encontrado"
+                "message" => "Coordinador Academico no encontrado"
             ], 404);
         }
 
@@ -512,11 +512,89 @@ class UsuarioController extends Controller
         }
     }
 
+    public function showGestorTH()
+    {
+        try {
+            // Obtener el ID del rol "Docente"
+            $rolGestorTH = RolModel::select('id_rol')
+                ->where('descripcion', '=', 'Gestora de la Unidad de Talento Humano')
+                ->first();
+
+            if (!$rolGestorTH) {
+                return response()->json([
+                    "ok" => false,
+                    "message" => "Rol Gestor de T.H no encontrado"
+                ], 404);
+            }
+
+            // Obtener los usuarios que tienen el rol de "Coordinador"
+            $gestores = UsuarioModel::select(
+                "id_usuario",
+                "nombres",
+                "apellidos",
+                "cedula",
+                "correo",  // Agregar correo
+                "telefono",  // Agregar teléfono
+                UsuarioModel::raw("CONCAT(nombres, ' ', apellidos) as nombre_completo"),
+                "titulo_academico.descripcion as titulo_academico", // Título académico
+            )
+            ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+
+            ->where('id_rol', '=', $rolGestorTH->id_rol)
+            ->where('usuarios.estado', '=', 'A')
+            ->get();
+
+            return response()->json([
+                "ok" => true,
+                "data" => $gestores
+            ], 200);
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Línea : " . $e->getLine());
+
+        if (!$rolGestorTH) {
+            return response()->json([
+                "ok" => false,
+                "message" => "Gestor T.H no encontrado"
+            ], 404);
+        }
+
+        // Obtener los usuarios que tienen el rol de "Docente"
+        $gestores = UsuarioModel::select(
+            "usuarios.id_usuario",
+            "usuarios.nombres",
+            "usuarios.apellidos",
+            "usuarios.cedula",
+            UsuarioModel::raw("CONCAT(usuarios.nombres, ' ', usuarios.apellidos) as nombre_completo"),
+            "titulo_academico.descripcion as titulo_academico",
+        )
+        ->join('titulo_academico', 'usuarios.id_titulo_academico', '=', 'titulo_academico.id_titulo_academico')
+        ->where('usuarios.id_rol', '=', $rolGestorTH->id_rol)
+        ->where('usuarios.estado', '=', 'A')
+        ->get();
+
+        return response()->json([
+            "ok" => true,
+            "data" => $gestores
+        ], 200);
+        } catch (Exception $e) {
+            Log::error(__FILE__ . " > " . __FUNCTION__);
+            Log::error("Mensaje : " . $e->getMessage());
+            Log::error("Línea : " . $e->getLine());
+
+            return response()->json([
+                "ok" => false,
+                "message" => "Error interno en el servidor"
+            ], 500);
+        }
+    }
+
     public function deleteUsuario(Request $request, $userToDelete)
 {
     try {
         $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
-        
+
         $usuario = UsuarioModel::find($userToDelete);
 
         if (!$usuario) {
@@ -531,7 +609,7 @@ class UsuarioController extends Controller
             "estado" => "E",
             "id_usuario_creador" => auth()->id() ?? 1,
             "ip_actualizacion" => $request->ip(),
-            "fecha_actualizacion" => now(), 
+            "fecha_actualizacion" => now(),
         ]);
 
         // Obtener las carreras del usuario
@@ -555,7 +633,7 @@ class UsuarioController extends Controller
             "ok" => true,
             "data" => "Usuario eliminado con éxito"
         ], 200);
-        
+
     } catch (Exception $e) {
         log::error(__FILE__ . " > " . __FUNCTION__);
         log::error("Mensaje : " . $e->getMessage());
@@ -690,7 +768,7 @@ public function eliminarCarrera(Request $request, $id)
 
 
 
-    
+
 
 
 
@@ -701,7 +779,7 @@ public function eliminarCarrera(Request $request, $id)
         try {
             // Log para el registro de acciones
             $this->servicio_informe->storeInformativoLogs(__FILE__, __FUNCTION__);
-    
+
             // Buscar el usuario por ID con carreras y pivot id_jornada
             $usuario = UsuarioModel::with(['carreras' => function ($query) {
                 $query->select('carreras.id_carrera', 'carreras.nombre')
@@ -732,7 +810,7 @@ public function eliminarCarrera(Request $request, $id)
             ->where("usuarios.id_usuario", $id) // Filtrar por ID
             ->where("usuarios.estado", "A") // Asegurarse de que el usuario esté activo
             ->first(); // Usar first() para obtener un único registro
-    
+
             // Verificar si el usuario fue encontrado
             if (!$usuario) {
                 return response()->json([
@@ -740,31 +818,31 @@ public function eliminarCarrera(Request $request, $id)
                     "message" => "Usuario no encontrado"
                 ], 404);
             }
-    
+
             // Cargar las jornadas manualmente
             foreach ($usuario->carreras as $carrera) {
                 $carrera->jornada = JornadaModel::find($carrera->pivot->id_jornada);
             }
-    
+
             // Devolver el usuario encontrado con las carreras y sus jornadas
             return response()->json([
                 "ok" => true,
                 "data" => $usuario
             ], 200);
-    
+
         } catch (Exception $e) {
             // Log del error
             log::error(__FILE__ . " > " . __FUNCTION__);
             log::error("Mensaje : " . $e->getMessage());
             log::error("Línea : " . $e->getLine());
-    
+
             return response()->json([
                 "ok" => false,
                 "message" => "Error interno en el servidor"
             ], 500);
         }
     }
-    
+
 
 
 
@@ -809,7 +887,7 @@ public function eliminarCarrera(Request $request, $id)
                 'usuario' => $correo  // O cualquier dato que necesites devolver
             ], 200);
 
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // Captura cualquier excepción y retorna un mensaje de error
             return response()->json([
                 'ok' => false,
