@@ -209,7 +209,7 @@ public function showDistribucion(Request $request)
             "nivel.id_nivel as idnivel",
             
             "materias.id_materia as idmateria",
-            "paralelo.id_paralelo as idparalelo",
+            "distribuciones_horario_academica.id_paralelo as idparalelo",
             "carreras.id_carrera as idcarrera",
             "paralelo.paralelo",
             "distribuciones_horario_academica.dia",
