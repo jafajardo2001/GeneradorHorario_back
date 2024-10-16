@@ -1,9 +1,7 @@
 <?php
 namespace App\Http\Controllers;
-
 use Illuminate\Http\Request;
 use Exception;
-
 class CerrarSesionController extends Controller
 {
     public function logout(Request $request)
@@ -14,7 +12,6 @@ class CerrarSesionController extends Controller
             if ($user) {
                 // Invalidar el token del usuario
                 $user->token()->revoke();
-
                 return response()->json([
                     'ok' => true,
                     'message' => 'Sesión cerrada con éxito.'
