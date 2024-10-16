@@ -3,6 +3,7 @@
 use App\Http\Controllers\AsignaturaController;
 use App\Http\Controllers\AutenticacionController;
 use App\Http\Controllers\CarreraController;
+use App\Http\Controllers\CerrarSesionController;
 use App\Http\Controllers\InstitutoController;
 use App\Http\Controllers\TituloAcademicoController;
 use App\Http\Controllers\NivelController;
@@ -142,5 +143,10 @@ Route::prefix('istg')->group(
                 Route::get("getPlanificacionAcademicas",[PlanificacionAcademica::class,'getPlanificacionAcademica']);
             }
         );
+
+        //cerrar sesión
+        Route::post('/logout', [CerrarSesionController::class, 'logout'])->middleware('auth:api');
+
+
     }
 );
